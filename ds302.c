@@ -8,17 +8,17 @@
 #define DS302_DEBUG(...) eprintf(__VA_ARGS__)
 
 // gets the clock in microsecs
-uint64_t	rtuClock()
+uint64_t rtuClock()
 {
-	struct timespec	tp;
-	uint64_t	result;
+    struct timespec	tp;
+    uint64_t	result;
 
-	if(clock_gettime(CLOCK_MONOTONIC, &tp) < 0) {
-		DS302_DEBUG("CLOCK_GETTIME ERROR!!!\n");
-	}
+    if(clock_gettime(CLOCK_MONOTONIC, &tp) < 0) {
+        DS302_DEBUG("CLOCK_GETTIME ERROR!!!\n");
+    }
 
-	result = (tp.tv_nsec / 1000) + (tp.tv_sec * 1000000);
-	return result;
+    result = (tp.tv_nsec / 1000) + (tp.tv_sec * 1000000);
+    return result;
 }
 
 void _sm_BootMaster_initial (CO_Data*, UNS32);
@@ -27,10 +27,10 @@ void _sm_BootMaster_operwait (CO_Data*, UNS32);
 void _sm_BootMaster_slavestart (CO_Data*, UNS32);
 
 INIT_SM_TYPE(BOOTMASTER,_sm_BootMaster_States,TimerCallback_t,
-        _sm_BootMaster_initial,
-        _sm_BootMaster_bootproc,
-        _sm_BootMaster_operwait,
-        _sm_BootMaster_slavestart);
+    _sm_BootMaster_initial,
+    _sm_BootMaster_bootproc,
+    _sm_BootMaster_operwait,
+    _sm_BootMaster_slavestart);
 
 DECLARE_SM(BOOTMASTER, _masterBoot);
 
@@ -41,32 +41,32 @@ RUN_SM(myMachine, NULL, 0);
 }
 
 // 0x1F80 bits
-#define DS302_DEVICE_NMT_MASTER		0x01	// is the device the NMT master
-#define DS302_DEVICE_START_ALL_SLAVES 	0x02	// perform a broadcast to start all slaves
-#define DS302_DEVICE_MANUAL_OPERATIONAL	0x04	// enter operational state manually
-#define DS302_DEVICE_MANUAL_START_SLAVE	0x08	// application will start the slaves
-#define DS302_DEVICE_ONERROR_MANDATORY	0x10	// reset ALL slaves if a mandatory has an error
+#define DS302_DEVICE_NMT_MASTER         0x01    // is the device the NMT master
+#define DS302_DEVICE_START_ALL_SLAVES   0x02    // perform a broadcast to start all slaves
+#define DS302_DEVICE_MANUAL_OPERATIONAL 0x04    // enter operational state manually
+#define DS302_DEVICE_MANUAL_START_SLAVE 0x08    // application will start the slaves
+#define DS302_DEVICE_ONERROR_MANDATORY  0x10    // reset ALL slaves if a mandatory has an error
 
 // 0x1F89 - maximum time to wait for all mandatory slaves
 
 // 0x1F81 network list
-#define DS302_NL_IS_SLAVE		0x01
-#define DS302_NL_ONBOOT_START_ERROR_CTL	0x02
-#define DS302_NL_ONBOOT_START_SLAVE	0x04
-#define DS302_NL_MANDATORY		0x08
-#define DS302_NL_DONOT_RESET		0x10
-#define DS302_NL_SW_VERIFY		0x20
-#define DS302_NL_SW_UPDATE		0x40
+#define DS302_NL_IS_SLAVE               0x01
+#define DS302_NL_ONBOOT_START_ERROR_CTL 0x02
+#define DS302_NL_ONBOOT_START_SLAVE     0x04
+#define DS302_NL_MANDATORY              0x08
+#define DS302_NL_DONOT_RESET            0x10
+#define DS302_NL_SW_VERIFY              0x20
+#define DS302_NL_SW_UPDATE              0x40
 // the second byte is the retry factor
-#define DS302_NL_RETRY_FACTOR(a)	(((a) >> 8) & 0xFF)
+#define DS302_NL_RETRY_FACTOR(a)        (((a) >> 8) & 0xFF)
 // the 3 and 4 bytes are the guard time
-#define DS302_NL_GUARD_TIME(a)		(((a) >> 16) & 0xFFFF)
+#define DS302_NL_GUARD_TIME(a)          (((a) >> 16) & 0xFFFF)
 
 typedef enum ds302_BootState {
-	BootInitialised = 0x00,
-	BootAttempted = 0x01,
-	BootCompleted = 0x02,
-	BootTimedOut = 0x03,
+    BootInitialised = 0x00,
+    BootAttempted = 0x01,
+    BootCompleted = 0x02,
+    BootTimedOut = 0x03,
 } ds302_BootState;
 
 // holds the boot signals
@@ -75,28 +75,27 @@ ds302_BootState ds302_boot_data[NMT_MAX_NODE_ID];
 // move to a pointer based state machine, using functions that are also callback capable for SDOs
 // type for functions is SDOCallback_t
 
-
 /*
  BootSlave state machine
 */
 
 SDOCallback_t const _sm_BootSlave_StateTable[ SM_BOOTSLAVE_NUM_STATES ] = {
-        _sm_BootSlave_initial,
-        _sm_BootSlave_getDeviceType,
-        _sm_BootSlave_getIdentification_1,
-        _sm_BootSlave_getIdentification_2,
-        _sm_BootSlave_getIdentification_3,
-        _sm_BootSlave_getIdentification_4,
-        _sm_BootSlave_decideBCPath,
-        _sm_BootSlave_doConfigurationVersionChecks,
-        _sm_BootSlave_verifyConfigurationVersion_1,
-        _sm_BootSlave_verifyConfigurationVersion_2,
-        _sm_BootSlave_downloadConfiguration,
-        _sm_BootSlave_startErrorControlService,
-        _sm_BootSlave_waitHeartbeat,
-        _sm_BootSlave_startNodeGuard,
-        _sm_BootSlave_errorControlStarted,
-        _sm_BootSlave_startSlave,
+    _sm_BootSlave_initial,
+    _sm_BootSlave_getDeviceType,
+    _sm_BootSlave_getIdentification_1,
+    _sm_BootSlave_getIdentification_2,
+    _sm_BootSlave_getIdentification_3,
+    _sm_BootSlave_getIdentification_4,
+    _sm_BootSlave_decideBCPath,
+    _sm_BootSlave_doConfigurationVersionChecks,
+    _sm_BootSlave_verifyConfigurationVersion_1,
+    _sm_BootSlave_verifyConfigurationVersion_2,
+    _sm_BootSlave_downloadConfiguration,
+    _sm_BootSlave_startErrorControlService,
+    _sm_BootSlave_waitHeartbeat,
+    _sm_BootSlave_startNodeGuard,
+    _sm_BootSlave_errorControlStarted,
+    _sm_BootSlave_startSlave,
 };
 
 // holds the state machines for each slave boot process
@@ -104,23 +103,23 @@ _sm_BootSlave ds302_slaveBootSM[NMT_MAX_NODE_ID];
 
 
 const char* _sm_BootSlave_CodeToText[] = {
-        "OK: finished OK",
-        "CAN: generic CAN error",
-        "A: node no longer in network list",         
-        "B: no response on 0x1000 received",
-        "C: device type (0x1000) did not match expected",
-        "D: vendor id (0x1018) did not match expected",
-        "E: slave did not respond to status check. Slave is HB producer",
-        "F: slave did not respond to status check. Slave is a NG slave",
-        "G: application software version check failed, no values defined",
-        "H: application software version check failed, 0x1F52 mismatch",
-        "I: application software version check failed, 0x1027 mismatch",
-        "J: Automatic configuration download failed",
-        "K: heartbeat failure during Error Control Service start",            
-        "L: slave was initially operational",
-        "M: product code (0x1018) did not match expected",
-        "N: revision number (0x1018) did not match expected",
-        "O: serial number (0x1018) did not match expected",
+    "OK: finished OK",
+    "CAN: generic CAN error",
+    "A: node no longer in network list",         
+    "B: no response on 0x1000 received",
+    "C: device type (0x1000) did not match expected",
+    "D: vendor id (0x1018) did not match expected",
+    "E: slave did not respond to status check. Slave is HB producer",
+    "F: slave did not respond to status check. Slave is a NG slave",
+    "G: application software version check failed, no values defined",
+    "H: application software version check failed, 0x1F52 mismatch",
+    "I: application software version check failed, 0x1027 mismatch",
+    "J: Automatic configuration download failed",
+    "K: heartbeat failure during Error Control Service start",            
+    "L: slave was initially operational",
+    "M: product code (0x1018) did not match expected",
+    "N: revision number (0x1018) did not match expected",
+    "O: serial number (0x1018) did not match expected",
 };
 
 
@@ -129,47 +128,47 @@ const char* _sm_BootSlave_CodeToText[] = {
 */
 void ds302_preOperational_preBoot (CO_Data* d)
 {
-	/* dummy vars pending real structures */
-	int	lssrequired = 0;
+    /* dummy vars pending real structures */
+    int	lssrequired = 0;
 
-	eprintf ("ds302_preOperational_preBoot ENTRY\n");
+    eprintf ("ds302_preOperational_preBoot ENTRY\n");
 
-	/* initialize data structures */
-	int	i;
+    /* initialize data structures */
+    int	i;
 
-	// initialize the boot state machines	
-	for (i = 0; i < NMT_MAX_NODE_ID; i++)
-		SM_INIT (i);
-	
-	// initialize the boot signals
-	for (i = 0; i < NMT_MAX_NODE_ID; i++)
-		ds302_boot_data[i] = BootInitialised;
+    // initialize the boot state machines	
+    for (i = 0; i < NMT_MAX_NODE_ID; i++)
+        SM_INIT (i);
 
-	if (ds302_bitcheck_32(d, 0x1F80, 0x00, DS302_DEVICE_NMT_MASTER) != 1) {
-		// enter slave state
-		DS302_DEBUG("I am not a master, so not booting\n");
-		// not needed
-		return;
-	}
+    // initialize the boot signals
+    for (i = 0; i < NMT_MAX_NODE_ID; i++)
+        ds302_boot_data[i] = BootInitialised;
 
-	if (lssrequired)
-		// no LSS support for now
-		return;
+    if (ds302_bitcheck_32(d, 0x1F80, 0x00, DS302_DEVICE_NMT_MASTER) != 1) {
+        // enter slave state
+        DS302_DEBUG("I am not a master, so not booting\n");
+        // not needed
+        return;
+    }
 
-	if (ds302_nl_keepalive_nodes_present(d)) {
+    if (lssrequired)
+        // no LSS support for now
+        return;
 
-		DS302_DEBUG("Keep alive some, send Reset Comm\n");
-		// send NMT_Reset_Comms to the nodes where keepalive not set
-		ds302_nl_send_reset_to_non_keepalive(d);
+    if (ds302_nl_keepalive_nodes_present(d)) {
 
-	} else {
+        DS302_DEBUG("Keep alive some, send Reset Comm\n");
+        // send NMT_Reset_Comms to the nodes where keepalive not set
+        ds302_nl_send_reset_to_non_keepalive(d);
 
-		DS302_DEBUG("Broadcast, send Reset Comm\n");
-		// send a broadcast NMT_Reset_Comms
-		masterSendNMTstateChange (d, 0, NMT_Reset_Comunication);
-	}
+    } else {
 
-	eprintf ("ds302_preOperational_preBoot DONE\n");
+        DS302_DEBUG("Broadcast, send Reset Comm\n");
+        // send a broadcast NMT_Reset_Comms
+        masterSendNMTstateChange (d, 0, NMT_Reset_Comunication);
+    }
+
+    eprintf ("ds302_preOperational_preBoot DONE\n");
 }
 
 /*
@@ -177,310 +176,310 @@ void ds302_preOperational_preBoot (CO_Data* d)
 */
 void ds302_preOperational_postBoot (CO_Data* d)
 {
-	int	startallslaves = 1;
+    int	startallslaves = 1;
 
-	// boot process
+    // boot process
 
-	eprintf ("ds302_preOperational_postBoot ENTRY\n");
+    eprintf ("ds302_preOperational_postBoot ENTRY\n");
 
-	if (ds302_all_mandatory_booted(d) != 1)
-	{
-		DS302_DEBUG("Not all mandatory slaves booted!\n");
-		return;
-	}
-	
-	if (ds302_bitcheck_32(d, 0x1F80, 0x00, DS302_DEVICE_MANUAL_OPERATIONAL) == 0) {
+    if (ds302_all_mandatory_booted(d) != 1)
+    {
+        DS302_DEBUG("Not all mandatory slaves booted!\n");
+        return;
+    }
 
-		DS302_DEBUG("Entering operational\n");
-		setState(d, Operational);
-	} else {
-		
-		DS302_DEBUG("Waiting to be put into operational\n");
-		// wait in loop to be operational ???
-		// there has to be a better way
-		while (getState(d) != Operational)
-			sleep (1);
+    if (ds302_bitcheck_32(d, 0x1F80, 0x00, DS302_DEVICE_MANUAL_OPERATIONAL) == 0) {
 
-		DS302_DEBUG("Was put into operational mode\n");
-	}
+        DS302_DEBUG("Entering operational\n");
+        setState(d, Operational);
+    } else {
+        
+        DS302_DEBUG("Waiting to be put into operational\n");
+        // wait in loop to be operational ???
+        // there has to be a better way
+        while (getState(d) != Operational)
+            sleep (1);
 
-	// Only execute this when I am operational
-	// this enables multiple executions for this function
-	if ((ds302_bitcheck_32(d, 0x1F80, 0x00, DS302_DEVICE_MANUAL_START_SLAVE) == 0) && getState(d) == Operational) {
-	
-		DS302_DEBUG("Start slaves once operational\n");
+        DS302_DEBUG("Was put into operational mode\n");
+    }
 
-		// decide on broadcast or individual based on DS302_DEVICE_START_ALL_SLAVES
+    // Only execute this when I am operational
+    // this enables multiple executions for this function
+    if ((ds302_bitcheck_32(d, 0x1F80, 0x00, DS302_DEVICE_MANUAL_START_SLAVE) == 0) && getState(d) == Operational) {
 
-		if (ds302_bitcheck_32(d, 0x1F80, 0x00, DS302_DEVICE_MANUAL_START_SLAVE) == 1) {
-			DS302_DEBUG("Start slaves with a broadcast\n");
-			masterSendNMTstateChange (d, 0, NMT_Start_Node);
-		} else {
-			DS302_DEBUG("Start slaves individually\n");
-			//start slaves individually
-			int slaveid;
-			int myid = getNodeId(d);
-			for (slaveid=1; slaveid < NMT_MAX_NODE_ID; slaveid++) {
-				// make sure to skip myself
-				if ((slaveid != myid) && ds302_nl_node_in_list(d, slaveid))
-					masterSendNMTstateChange (d, slaveid, NMT_Start_Node);
-			}
-		}
-	}
+        DS302_DEBUG("Start slaves once operational\n");
 
-	// boot up done
+        // decide on broadcast or individual based on DS302_DEVICE_START_ALL_SLAVES
 
-	eprintf ("ds302_preOperational_postBoot DONE\n");
+        if (ds302_bitcheck_32(d, 0x1F80, 0x00, DS302_DEVICE_MANUAL_START_SLAVE) == 1) {
+            DS302_DEBUG("Start slaves with a broadcast\n");
+            masterSendNMTstateChange (d, 0, NMT_Start_Node);
+        } else {
+            DS302_DEBUG("Start slaves individually\n");
+            //start slaves individually
+            int slaveid;
+            int myid = getNodeId(d);
+            for (slaveid=1; slaveid < NMT_MAX_NODE_ID; slaveid++) {
+                // make sure to skip myself
+                if ((slaveid != myid) && ds302_nl_node_in_list(d, slaveid))
+                    masterSendNMTstateChange (d, slaveid, NMT_Start_Node);
+            }
+        }
+    }
+
+    // boot up done
+
+    eprintf ("ds302_preOperational_postBoot DONE\n");
 }
 
 static int sleep_ms ( unsigned long ms )
 {
-        if ( ms >= 1000 ) ms = 1000;
-        return usleep ( ms * 1000 );
+    if ( ms >= 1000 ) ms = 1000;
+    return usleep ( ms * 1000 );
 }
 
 void ds302_slaveBootprocess (CO_Data* d)
 {
-	// bit tricky. Will have to do this on parallel threads?
-	// 
+    // bit tricky. Will have to do this on parallel threads?
+    // 
 
-	eprintf ("ds302_slaveBootprocess ENTRY\n");
+    eprintf ("ds302_slaveBootprocess ENTRY\n");
 
-	int optionalslave = 0;
-	int nodeismandatory = 1;
-	int bootexpired = 1;
+    int optionalslave = 0;
+    int nodeismandatory = 1;
+    int bootexpired = 1;
 
-	// start boot one slave in sequence
-	// for slave in list...
+    // start boot one slave in sequence
+    // for slave in list...
 
-	// for now, we only do slave 0x01
+    // for now, we only do slave 0x01
 
-	_sm_BootSlave_Codes	result;
+    _sm_BootSlave_Codes	result;
 
-	// we can leverage the bootup callback here!
-	while (1) {
+    // we can leverage the bootup callback here!
+    while (1) {
 
-		// run the state machine until DONE
+        // run the state machine until DONE
 
-		DS302_DEBUG("Run state machine for 0x01\n");
-		eprintf ("SM for 0x01 is: %d %d %d\n", ds302_slaveBootSM[0x01].machine_state, ds302_slaveBootSM[0x01].current_state,  ds302_slaveBootSM[0x01].step_iter);
+        DS302_DEBUG("Run state machine for 0x01\n");
+        eprintf ("SM for 0x01 is: %d %d %d\n", ds302_slaveBootSM[0x01].machine_state, ds302_slaveBootSM[0x01].current_state,  ds302_slaveBootSM[0x01].step_iter);
 
-		// run the machine ONCE, since once triggered relies on callbacks
-		//EnterMutex();
-		SM_RUN_MACHINE(d, 0x01);
-		//LeaveMutex();
+        // run the machine ONCE, since once triggered relies on callbacks
+        //EnterMutex();
+        SM_RUN_MACHINE(d, 0x01);
+        //LeaveMutex();
 
-		while (!SM_IS_FINISHED(0x01)) {
-			// sleep 100ms
-			sleep_ms (100);	
-		}
-		eprintf ("SM for 0x01 is: %d %d %d\n", ds302_slaveBootSM[0x01].machine_state, ds302_slaveBootSM[0x01].current_state,  ds302_slaveBootSM[0x01].step_iter);
+        while (!SM_IS_FINISHED(0x01)) {
+            // sleep 100ms
+            sleep_ms (100);	
+        }
+        eprintf ("SM for 0x01 is: %d %d %d\n", ds302_slaveBootSM[0x01].machine_state, ds302_slaveBootSM[0x01].current_state,  ds302_slaveBootSM[0x01].step_iter);
 
-		// machine finished
-		
-		eprintf ("Machine for node ID 0x01 finished. %d, %s\n", SM_DATA(0x01,machine_state), SM_ERR_MSG(SM_DATA(0x01,machine_state)));
+        // machine finished
+        
+        eprintf ("Machine for node ID 0x01 finished. %d, %s\n", SM_DATA(0x01,machine_state), SM_ERR_MSG(SM_DATA(0x01,machine_state)));
 
-		result = SM_DATA(0x01,machine_state);
+        result = SM_DATA(0x01,machine_state);
 
-		// signal on optional slave
-		if (optionalslave)
-			ds302_boot_data[0x01] = BootAttempted;
+        // signal on optional slave
+        if (optionalslave)
+            ds302_boot_data[0x01] = BootAttempted;
 
-		if (result == SM_ErrB) {
-			DS302_DEBUG("Result is B,  waiting\n");
-			if (nodeismandatory && bootexpired) { 
-				// inform application
-				eprintf ("Can't start node 0x01 and it's mandatory\n");
-				DS302_DEBUG("Boot expired for mandatory\n");
-				break;
-			} else {
-				DS302_DEBUG("Sleeping for 1 second to retry\n");
-				// sleep 1 second
-				sleep (1);
-			}
+        if (result == SM_ErrB) {
+            DS302_DEBUG("Result is B,  waiting\n");
+            if (nodeismandatory && bootexpired) { 
+                // inform application
+                eprintf ("Can't start node 0x01 and it's mandatory\n");
+                DS302_DEBUG("Boot expired for mandatory\n");
+                break;
+            } else {
+                DS302_DEBUG("Sleeping for 1 second to retry\n");
+                // sleep 1 second
+                sleep (1);
+            }
 
-		} else if (result != SM_OK) {
-			DS302_DEBUG("Result is NOT OK, BootTImedOut, exiting loop\n");
-			// inform application
-			eprintf ("Node start for 0x01 returned %d\n", result);
-			// signal boot failed
-			ds302_boot_data[0x01] = BootTimedOut;
-			break;
-		} else {
-			DS302_DEBUG("Result is OK, BootCompleted, exiting loop\n");
-			// everything is fine, exit loop
-			// signal completed ok
-			ds302_boot_data[0x01] = BootCompleted;
-			break;
-		}
+        } else if (result != SM_OK) {
+            DS302_DEBUG("Result is NOT OK, BootTImedOut, exiting loop\n");
+            // inform application
+            eprintf ("Node start for 0x01 returned %d\n", result);
+            // signal boot failed
+            ds302_boot_data[0x01] = BootTimedOut;
+            break;
+        } else {
+            DS302_DEBUG("Result is OK, BootCompleted, exiting loop\n");
+            // everything is fine, exit loop
+            // signal completed ok
+            ds302_boot_data[0x01] = BootCompleted;
+            break;
+        }
 
-	}
+    }
 
-	DS302_DEBUG("Boot process done, checking slave statuses\n");
-	while (ds302_boot_data[0x01] == BootInitialised) {
-		// in this case we should WAIT until something DID happen with the node
-		sleep (1);
-	}
+    DS302_DEBUG("Boot process done, checking slave statuses\n");
+    while (ds302_boot_data[0x01] == BootInitialised) {
+        // in this case we should WAIT until something DID happen with the node
+        sleep (1);
+    }
 
-	eprintf ("ds302_slaveBootprocess DONE\n");
+    eprintf ("ds302_slaveBootprocess DONE\n");
 }
 
 void _sm_BootSlave_initial(CO_Data* d, UNS8 nodeid)
 {
-	// dummy checking for 0x1F81 bit 0
+    // dummy checking for 0x1F81 bit 0
 
-	DS302_DEBUG("_sm_BootSlave_initial (%d)\n", nodeid);
+    DS302_DEBUG("_sm_BootSlave_initial (%d)\n", nodeid);
 
-	if (0) {
-		DS302_DEBUG("_sm_BootSlave_initial Error A (%d)\n", nodeid);
-		SM_ERROR(nodeid, SM_ErrA);
-	} else {
-		DS302_DEBUG("_sm_BootSlave_initial switch to SM_BOOTSLAVE_GET_DEVTYPE (%d)\n", nodeid);
-		// go to the next state
-		SM_SWITCH_STATE(SM_BOOTSLAVE_GET_DEVTYPE,d,nodeid)
-	}
+    if (0) {
+        DS302_DEBUG("_sm_BootSlave_initial Error A (%d)\n", nodeid);
+        SM_ERROR(nodeid, SM_ErrA);
+    } else {
+        DS302_DEBUG("_sm_BootSlave_initial switch to SM_BOOTSLAVE_GET_DEVTYPE (%d)\n", nodeid);
+        // go to the next state
+        SM_SWITCH_STATE(SM_BOOTSLAVE_GET_DEVTYPE,d,nodeid)
+    }
 }
 
 void _sm_BootSlave_getDeviceType(CO_Data* d, UNS8 nodeid)
 {
-	DS302_DEBUG("_sm_BootSlave_getDeviceType (%d)\n", nodeid);
+    DS302_DEBUG("_sm_BootSlave_getDeviceType (%d)\n", nodeid);
 
-	if (SM_INITIAL(nodeid)) {
-		DS302_DEBUG("_sm_BootSlave_getDeviceType initial run (%d)\n", nodeid);
+    if (SM_INITIAL(nodeid)) {
+        DS302_DEBUG("_sm_BootSlave_getDeviceType initial run (%d)\n", nodeid);
 
-		// code for the first run only
-		// read 0x1000 0x00
-		// self callback
-		readNetworkDictCallbackAI (d, nodeid, 0x1000, 0x00, 0, _sm_BootSlave_getDeviceType, 0);
-		// do nothing else on the first run
-		return;
-	}
-	DS302_DEBUG("_sm_BootSlave_getDeviceType second+ call (%d)\n", nodeid);
+        // code for the first run only
+        // read 0x1000 0x00
+        // self callback
+        readNetworkDictCallbackAI (d, nodeid, 0x1000, 0x00, 0, _sm_BootSlave_getDeviceType, 0);
+        // do nothing else on the first run
+        return;
+    }
+    DS302_DEBUG("_sm_BootSlave_getDeviceType second+ call (%d)\n", nodeid);
 
-	// we end here on callback
+    // we end here on callback
 
-	UNS32	size = sizeof(SM_DATA(nodeid,Index1000));
-	UNS8	retcode = getReadResultNetworkDict (d, nodeid, &SM_DATA(nodeid,Index1000), &size, &SM_DATA(nodeid,error_code));
+    UNS32	size = sizeof(SM_DATA(nodeid,Index1000));
+    UNS8	retcode = getReadResultNetworkDict (d, nodeid, &SM_DATA(nodeid,Index1000), &size, &SM_DATA(nodeid,error_code));
 
-	if (retcode == SDO_UPLOAD_IN_PROGRESS || retcode == SDO_DOWNLOAD_IN_PROGRESS) {
-		DS302_DEBUG("_sm_BootSlave_getDeviceType SDO op in progress (%d)\n", nodeid);
-		// do nothing, outside of callback call
-		return;
-	}
+    if (retcode == SDO_UPLOAD_IN_PROGRESS || retcode == SDO_DOWNLOAD_IN_PROGRESS) {
+        DS302_DEBUG("_sm_BootSlave_getDeviceType SDO op in progress (%d)\n", nodeid);
+        // do nothing, outside of callback call
+        return;
+    }
 
         if(retcode != SDO_FINISHED) {
-		DS302_DEBUG("_sm_BootSlave_getDeviceType SDO error (%d) = %x\n", nodeid, retcode);
+        DS302_DEBUG("_sm_BootSlave_getDeviceType SDO error (%d) = %x\n", nodeid, retcode);
                 SM_ERROR(nodeid, SM_ErrB);
         }
         /* Finalise last SDO transfer with this node */
         closeSDOtransfer(d, nodeid, SDO_CLIENT);
 
-	// if we're not done YET proceed
-	if (!SM_IS_FINISHED(nodeid)) {
+    // if we're not done YET proceed
+    if (!SM_IS_FINISHED(nodeid)) {
 
-		DS302_DEBUG("_sm_BootSlave_getDeviceType no issues, logic proceeding (%d)\n", nodeid);
+        DS302_DEBUG("_sm_BootSlave_getDeviceType no issues, logic proceeding (%d)\n", nodeid);
 
-		// we have the data in Index1000
-		// compare against the expected value in 0x1F84
-		// dummy check for now
-		if (0) {
-			SM_ERROR(nodeid, SM_ErrC);
-		} else {
-			// everything OK, see if we need to check IDs or not
-			// dummy check for now
-			if (1) {
-				// switch to pulling the IDs
-				SM_SWITCH_STATE(SM_BOOTSLAVE_GET_ID1,d,nodeid)
-			} else {
-				// skip pulling the IDs chain
-				SM_SWITCH_STATE(SM_BOOTSLAVE_DECIDE_BC,d,nodeid)
-			}
-		}
-	} // else finished and we're done here
+        // we have the data in Index1000
+        // compare against the expected value in 0x1F84
+        // dummy check for now
+        if (0) {
+            SM_ERROR(nodeid, SM_ErrC);
+        } else {
+            // everything OK, see if we need to check IDs or not
+            // dummy check for now
+            if (1) {
+                // switch to pulling the IDs
+                SM_SWITCH_STATE(SM_BOOTSLAVE_GET_ID1,d,nodeid)
+            } else {
+                // skip pulling the IDs chain
+                SM_SWITCH_STATE(SM_BOOTSLAVE_DECIDE_BC,d,nodeid)
+            }
+        }
+    } // else finished and we're done here
 }
 
 void _sm_BootSlave_getIdentification_1(CO_Data* d, UNS8 nodeid)
 {
-	DS302_DEBUG("_sm_BootSlave_getIdentification_1\n");
+    DS302_DEBUG("_sm_BootSlave_getIdentification_1\n");
 
-        if (SM_INITIAL(nodeid)) {
-		DS302_DEBUG("_sm_BootSlave_getIdentification_1 initial call\n");
+    if (SM_INITIAL(nodeid)) {
+        DS302_DEBUG("_sm_BootSlave_getIdentification_1 initial call\n");
 
-                // code for the first run only  
-                // read 0x1018 0x01                       
-                // self callback      
-                readNetworkDictCallbackAI (d, nodeid, 0x1018, 0x01, 0, _sm_BootSlave_getIdentification_1, 0);
-                // do nothing else on the first run
-                return;                   
+        // code for the first run only  
+        // read 0x1018 0x01                       
+        // self callback      
+        readNetworkDictCallbackAI (d, nodeid, 0x1018, 0x01, 0, _sm_BootSlave_getIdentification_1, 0);
+        // do nothing else on the first run
+        return;                   
+    }
+
+    DS302_DEBUG("_sm_BootSlave_getIdentification_1 second call+\n");
+
+    // we end here on callback
+
+    UNS32   size = sizeof(SM_DATA(nodeid,Index1018_1));
+    UNS8    retcode = getReadResultNetworkDict (d, nodeid, &SM_DATA(nodeid,Index1018_1), &size, &SM_DATA(nodeid,error_code));
+
+    if (retcode == SDO_UPLOAD_IN_PROGRESS || retcode == SDO_DOWNLOAD_IN_PROGRESS)
+            // do nothing, outside of callback call
+            return;
+
+    if(retcode != SDO_FINISHED) {
+            SM_ERROR(nodeid, SM_ErrD);
+    }
+    /* Finalise last SDO transfer with this node */
+    closeSDOtransfer(d, nodeid, SDO_CLIENT);
+
+    // if we're not done YET proceed
+    if (!SM_IS_FINISHED(nodeid)) {
+        // verify against required data in 0x1F85
+        if (0) {
+            // mismatch, stop process
+            SM_ERROR(nodeid, SM_ErrD);
+        } else {
+            // go to the next one
+            SM_SWITCH_STATE(SM_BOOTSLAVE_GET_ID2,d,nodeid)
         }
-
-	DS302_DEBUG("_sm_BootSlave_getIdentification_1 second call+\n");
-
-        // we end here on callback
-
-        UNS32   size = sizeof(SM_DATA(nodeid,Index1018_1));
-        UNS8    retcode = getReadResultNetworkDict (d, nodeid, &SM_DATA(nodeid,Index1018_1), &size, &SM_DATA(nodeid,error_code));
-
-        if (retcode == SDO_UPLOAD_IN_PROGRESS || retcode == SDO_DOWNLOAD_IN_PROGRESS)
-                // do nothing, outside of callback call
-                return;
-
-        if(retcode != SDO_FINISHED) {
-                SM_ERROR(nodeid, SM_ErrD);
-        }
-        /* Finalise last SDO transfer with this node */
-        closeSDOtransfer(d, nodeid, SDO_CLIENT);
-
-        // if we're not done YET proceed
-        if (!SM_IS_FINISHED(nodeid)) {
-		// verify against required data in 0x1F85
-		if (0) {
-			// mismatch, stop process
-			SM_ERROR(nodeid, SM_ErrD);
-		} else {
-			// go to the next one
-			SM_SWITCH_STATE(SM_BOOTSLAVE_GET_ID2,d,nodeid)
-		}
-	} // else finished and we're done here
+    } // else finished and we're done here
 }
 
 void _sm_BootSlave_getIdentification_2(CO_Data* d, UNS8 nodeid)
 {
-        if (SM_INITIAL(nodeid)) {      
-                // code for the first run only  
-                // read 0x1018 0x02                       
-                // self callback      
-                readNetworkDictCallbackAI (d, nodeid, 0x1018, 0x02, 0, _sm_BootSlave_getIdentification_2, 0);
-                // do nothing else on the first run
-                return;                   
+    if (SM_INITIAL(nodeid)) {      
+        // code for the first run only  
+        // read 0x1018 0x02                       
+        // self callback      
+        readNetworkDictCallbackAI (d, nodeid, 0x1018, 0x02, 0, _sm_BootSlave_getIdentification_2, 0);
+        // do nothing else on the first run
+        return;                   
+    }
+
+    // we end here on callback
+
+    UNS32   size = sizeof(SM_DATA(nodeid,Index1018_2));
+    UNS8    retcode = getReadResultNetworkDict (d, nodeid, &SM_DATA(nodeid,Index1018_2), &size, &SM_DATA(nodeid,error_code));
+
+    if (retcode == SDO_UPLOAD_IN_PROGRESS || retcode == SDO_DOWNLOAD_IN_PROGRESS)
+        // do nothing, outside of callback call
+        return;
+
+    if(retcode != SDO_FINISHED) {
+        SM_ERROR(nodeid, SM_ErrM);
+    }
+    /* Finalise last SDO transfer with this node */
+    closeSDOtransfer(d, nodeid, SDO_CLIENT);  
+
+    // if we're not done YET proceed
+    if (!SM_IS_FINISHED(nodeid)) {
+        // verify against required data in 0x1F86
+        if (0) {                  
+            // mismatch, stop process
+            SM_ERROR(nodeid, SM_ErrM);
+        } else {                               
+            // go to the next one               
+            SM_SWITCH_STATE(SM_BOOTSLAVE_GET_ID3,d,nodeid)
         }
-
-        // we end here on callback
-
-        UNS32   size = sizeof(SM_DATA(nodeid,Index1018_2));
-        UNS8    retcode = getReadResultNetworkDict (d, nodeid, &SM_DATA(nodeid,Index1018_2), &size, &SM_DATA(nodeid,error_code));
-
-        if (retcode == SDO_UPLOAD_IN_PROGRESS || retcode == SDO_DOWNLOAD_IN_PROGRESS)
-                // do nothing, outside of callback call
-                return;
-
-        if(retcode != SDO_FINISHED) {
-                SM_ERROR(nodeid, SM_ErrM);
-        }
-        /* Finalise last SDO transfer with this node */
-        closeSDOtransfer(d, nodeid, SDO_CLIENT);  
-
-        // if we're not done YET proceed
-        if (!SM_IS_FINISHED(nodeid)) {
-                // verify against required data in 0x1F86
-                if (0) {                  
-                        // mismatch, stop process
-                        SM_ERROR(nodeid, SM_ErrM);
-                } else {                               
-                        // go to the next one               
-                        SM_SWITCH_STATE(SM_BOOTSLAVE_GET_ID3,d,nodeid)
-                }
-        } // else finished and we're done here
+    } // else finished and we're done here
 }
 
 void _sm_BootSlave_getIdentification_3(CO_Data* d, UNS8 nodeid)
