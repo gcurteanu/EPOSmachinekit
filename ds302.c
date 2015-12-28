@@ -587,7 +587,7 @@ void _sm_BootSlave_downloadConfiguration(CO_Data* d, UNS8 nodeid)
         if (DATA_SM(ds302_data._bootSlave[nodeid]).dcfData == NULL || DATA_SM(ds302_data._bootSlave[nodeid]).dcfSize < 4) {
             // problem, empty data
             // is this a problem? Not having DCF data? Maybe we don't want to configure this slave?
-            DS302_DEBUG("ConciseDCF for %d: data for 0x1F22 does not include this slave\n", nodeid);
+            DS302_DEBUG("ConciseDCF for %d: data for 0x1F22 does not include this slave (empty data)\n", nodeid);
             DATA_SM(ds302_data._bootSlave[nodeid]).result = SM_ErrJ;
             STOP_SM(ds302_data._bootSlave[nodeid]);
             return;

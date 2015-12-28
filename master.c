@@ -838,7 +838,7 @@ int main(int argc,char **argv)
     }
   }
 
-	//setup_dcf ();
+	setup_dcf ();
 
 	// Set the master ID
 	// DO NOT SET THE STUPID MASTER ID, IT WILL REWRITE THE SDOs/PDOs
