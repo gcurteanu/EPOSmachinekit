@@ -1316,12 +1316,14 @@ void _sm_BootMaster_slavestart (CO_Data* d, UNS32 idx)
 
 void ds302_boot_slave (CO_Data* d, UNS8 slaveid)
 {
-    ds302_init_slaveSM (d, slaveid);
-    // mark the machine as used
-    DATA_SM (ds302_data._bootSlave[slaveid]).state = BootInitialised;
-    // mark the start time
-    DATA_SM(ds302_data._bootSlave[slaveid]).bootStart = rtuClock();
-    START_SM(ds302_data._bootSlave[slaveid], d, slaveid);
+    if (ds302_nl_node_in_list(d, slaveid)) {
+        ds302_init_slaveSM (d, slaveid);
+        // mark the machine as used
+        DATA_SM (ds302_data._bootSlave[slaveid]).state = BootInitialised;
+        // mark the start time
+        DATA_SM(ds302_data._bootSlave[slaveid]).bootStart = rtuClock();
+        START_SM(ds302_data._bootSlave[slaveid], d, slaveid);
+    }
 }
 
 void ds302_init_slaveSM (CO_Data* d, UNS8 slaveid)
