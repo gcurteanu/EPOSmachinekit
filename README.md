@@ -33,3 +33,37 @@ Hardware:
 - Using the RT-CAN socket interfaces (not the regular ones) included in the kernel
 - No need for the Peak Linux driver. It is not used / useful from what can be seen
 - The RT-CAN in the kernel seems stable, but can not cope with Linux interrupt sharing when used in the RT model. Peak card MUST NOT share it's IRQ with other devices... Or else kernel panics.
+
+
+
+
+
+
+
+# DCF file format
+
+The format for initializing slaves is the DCF format, but not sure if a full implementation is required
+
+Standard DCF format is a bit complex for our needs, and also requires some application logic to apply in case of the PDO mappings
+(per 301 : disable PDO, set mapping count to zero, load mapping, configure PDO, enable mapping and PDO)
+
+Our format should directly describe the steps and should be a 1:1 mapping to SDO actions. One problem to cope with is describing the data size of the objects
+
+Proposed format:
+[slave id]
+Index.Subindex = Size Value
+...
+
+slave id = decimal
+index / subindex = HEX without specifier?
+size = decimal
+value = either hex or decimal notation.
+
+Example:
+[1]
+1400.1 = 32 0x10000000
+...
+
+The standard DCF-like format might come, but since we're now doing Concise DCF the file format is up to us
+
+For initial testing, we will use the existing DCF example code from CanFestival
