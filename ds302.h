@@ -271,8 +271,11 @@ typedef struct {
     
     // DCF
     UNS32                   dcfCursor;      // DCF cursor for the SDO loads
+    UNS8                    *dcfData;       // DCF data for the node
     UNS32                   dcfSize;        // DCF total data size for this slave
+    UNS32                   dcfCount;       // DCF count of entries in the domain
     UNS32                   dcfState;       // DCF state. 0 - writeInit, 1 - writeInProgress. Used to determine current state in the callback
+    UNS32                   dcfLoadCount;   // DCF items loaded so far
 } _bootSlave_data_t;
 
 DECLARE_SM_TYPE(BOOTSLAVE, _sm_BootSlave_States, SDOCallback_t, _bootSlave_data_t);
@@ -296,3 +299,7 @@ void    ds302_init (CO_Data*);
 void    ds302_start (CO_Data *);
 /* Gets the DS-302 boot status */
 ds302_boot_state_t   ds302_status (CO_Data *);
+
+
+/* DCF data defines/routines */
+int     ds302_get_next_dcf (UNS8 *data, UNS32 *cursor, UNS16 *idx, UNS8 *subidx, UNS32 *size, UNS32 *value);

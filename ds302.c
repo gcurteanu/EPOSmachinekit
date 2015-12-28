@@ -553,9 +553,150 @@ void _sm_BootSlave_downloadConfiguration(CO_Data* d, UNS8 nodeid)
     DS302_DEBUG("_sm_BootSlave_downloadConfiguration\n");
     //// this is dummy for now. Doesn't do anything other than keep the SM functioning correctly
     if (INITIAL_SM(ds302_data._bootSlave[nodeid])) {
-        // code for the first run only         
+        // code for the first run only
+        DS302_DEBUG("ConciseDCF initialization for slave %d\n", nodeid);
+        // initialises the DCF pointers and data
+        
+        const indextable *	Object1F22;
+        UNS32		        errorCode;
+
+        Object1F81 = (*d->scanIndexOD)(d, 0x1F22, &errorCode);
+        if (errorCode != OD_SUCCESSFUL) {
+            DS302_DEBUG("ConciseDCF for %d: can not get data for 0x1F22\n", nodeid);
+            DATA_SM(ds302_data._bootSlave[nodeid]).result = SM_ErrJ;
+            STOP_SM(ds302_data._bootSlave[nodeid]);
+            return;
+        }
+
+        // verify that 1F22 has an entry for me
+        if (!(nodeid < Object1F22->bSubCount)) {
+            // problem, no data
+            DS302_DEBUG("ConciseDCF for %d: data for 0x1F22 does not include this slave\n", nodeid);
+            DATA_SM(ds302_data._bootSlave[nodeid]).result = SM_ErrJ;
+            STOP_SM(ds302_data._bootSlave[nodeid]);
+            return;
+        }
+        
+        // get the raw data
+        DATA_SM(ds302_data._bootSlave[nodeid]).dcfData = Object1F22->pSubindex[nodeid].pObject;
+        DATA_SM(ds302_data._bootSlave[nodeid]).dcfSize = Object1F22->pSubindex[nodeid].size;
+        DATA_SM(ds302_data._bootSlave[nodeid]).dcfCursor = 4; // see below why 4
+        DATA_SM(ds302_data._bootSlave[nodeid]).dcfState = 0;
+        
+        // why 4? Because DCF data is UNS32 number of entries and then idx/subidx/datasize/data ... 4 means we have at least the size
+        if (DATA_SM(ds302_data._bootSlave[nodeid]).dcfData == NULL || DATA_SM(ds302_data._bootSlave[nodeid]).dcfSize < 4) {
+            // problem, empty data
+            // is this a problem? Not having DCF data? Maybe we don't want to configure this slave?
+            DS302_DEBUG("ConciseDCF for %d: data for 0x1F22 does not include this slave\n", nodeid);
+            DATA_SM(ds302_data._bootSlave[nodeid]).result = SM_ErrJ;
+            STOP_SM(ds302_data._bootSlave[nodeid]);
+            return;
+        }
+        
+        // get the DCF count
+        DATA_SM(ds302_data._bootSlave[nodeid]).dcfCount = DATA_SM(ds302_data._bootSlave[nodeid]).dcfData[0] | 
+            DATA_SM(ds302_data._bootSlave[nodeid]).dcfData[1]<<8 | 
+            DATA_SM(ds302_data._bootSlave[nodeid]).dcfData[2]<<16 | 
+            DATA_SM(ds302_data._bootSlave[nodeid]).dcfData[3]<<24;
+            
+        DATA_SM(ds302_data._bootSlave[nodeid]).dcfLoadCount = 0;
+        DS302_DEBUG("ConciseDCF for %d: initialised OK with %d entries to load\n", nodeid, DATA_SM(ds302_data._bootSlave[nodeid]).dcfCount);
     }
 
+    /* the main SDO write loop takes place HERE. Init write, wait complete, repeat for next */
+    // loop while we still think we have data to load
+    while (DATA_SM(ds302_data._bootSlave[nodeid]).dcfCount > DATA_SM(ds302_data._bootSlave[nodeid]).dcfLoadCount) {
+        
+        if (DATA_SM(ds302_data._bootSlave[nodeid]).dcfState == 0) {
+            
+            UNS16   idx;
+            UNS8    subidx;
+            UNS32   size;
+            UNS32   value;
+            
+            // it's the start of a new data item
+            int retcode = ds302_get_next_dcf (
+                DATA_SM(ds302_data._bootSlave[nodeid]).dcfData,
+                &DATA_SM(ds302_data._bootSlave[nodeid]).dcfCursor,
+                &idx, &subidx, &size, &value);
+                
+            if (retcode < 0) {
+                // error, bug off
+
+                DS302_DEBUG("ConciseDCF for %d: GOT DCF ERROR. Had %d, did %d\n", nodeid,
+                    DATA_SM(ds302_data._bootSlave[nodeid]).dcfCount,
+                    DATA_SM(ds302_data._bootSlave[nodeid]).dcfLoadCount);
+
+                DATA_SM(ds302_data._bootSlave[nodeid]).result = SM_ErrJ;
+                STOP_SM(ds302_data._bootSlave[nodeid]);
+                return;                
+
+            } else if (retcode == 0) {
+                // EOS
+                // Odd, we hit EOS before the stated number of items
+                DS302_DEBUG("ConciseDCF for %d: apparently, we SHORT LOADED. Got EOS. Had %d, did %d\n", nodeid,
+                    DATA_SM(ds302_data._bootSlave[nodeid]).dcfCount,
+                    DATA_SM(ds302_data._bootSlave[nodeid]).dcfLoadCount);
+                DATA_SM(ds302_data._bootSlave[nodeid]).result = SM_ErrJ;
+                STOP_SM(ds302_data._bootSlave[nodeid]);
+                return;                
+            }
+            
+            // at this point I have the data, so I can proceed
+            DATA_SM(ds302_data._bootSlave[nodeid]).dcfState = 1;
+            
+            UNS8 retcode2 = writeNetworkDictCallBackAI (d, nodeid,
+                idx, subidx, 
+                size, 0, &value, 
+                _sm_BootSlave_downloadConfiguration,
+                0,  // endianize? Probably need 1 since we do direct translation of values
+                0   // block mode
+                );
+            
+            if (retcode2 != 0) {
+                // hit a send error
+                DS302_DEBUG("ConciseDCF for %d: GOT DCF SDO SEND ERROR. Had %d, did %d\n", nodeid,
+                    DATA_SM(ds302_data._bootSlave[nodeid]).dcfCount,
+                    DATA_SM(ds302_data._bootSlave[nodeid]).dcfLoadCount);
+
+                    DATA_SM(ds302_data._bootSlave[nodeid]).result = SM_ErrJ;
+                STOP_SM(ds302_data._bootSlave[nodeid]);
+                return;                                
+            }
+            
+            // at this point we sent it
+            // we let the loop run, should end up on "else" and get a IN PROGRESS and return waiting for complete on callback
+            
+        } else {
+            // it's the continuation of a previous data item
+            UNS8    retcode = getWriteResultNetworkDict (d, nodeid, &DATA_SM(ds302_data._bootSlave[nodeid]).errorCode);
+
+            if (retcode == SDO_UPLOAD_IN_PROGRESS || retcode == SDO_DOWNLOAD_IN_PROGRESS)
+                // do nothing, outside of callback call. Stupid
+                return;
+
+                /* Finalise last SDO transfer with this node */
+            closeSDOtransfer(d, nodeid, SDO_CLIENT);  
+
+            if(retcode != SDO_FINISHED) {
+                // we had an error situation, abort
+                DS302_DEBUG("ConciseDCF for %d: ABORT due to SDO error, %d/%x\n", nodeid, retcode, DATA_SM(ds302_data._bootSlave[nodeid]).errorCode);
+                DATA_SM(ds302_data._bootSlave[nodeid]).result = SM_ErrJ;
+                STOP_SM(ds302_data._bootSlave[nodeid]);
+                return;
+            }
+
+            // write completed ok, switch state to 0 and redo call
+            DATA_SM(ds302_data._bootSlave[nodeid]).dcfState = 0;
+            // also increment the load count
+            DATA_SM(ds302_data._bootSlave[nodeid]).dcfLoadCount++;
+        }
+    }
+    
+    DS302_DEBUG("ConciseDCF for %d: apparently, we loaded everything at this point. Had %d, did %d\n", nodeid,
+        DATA_SM(ds302_data._bootSlave[nodeid]).dcfCount,
+        DATA_SM(ds302_data._bootSlave[nodeid]).dcfLoadCount);
+    
     if (0) {
         // we had an error in the configuration download
         //SM_ERROR(nodeid, SM_ErrJ);
@@ -1160,4 +1301,48 @@ void ds302_init (CO_Data* d)
     // we can WAIT for a boot message before starting the boot process for example
     // in order to ensure the slave is ready to process commands
     
+}
+
+/*
+    Gets the DCF data at current cursor and updates the cursor to the next one
+    returns 1 if ok
+    returns 0 if EOS
+    returns -1 if error
+*/
+int     ds302_get_next_dcf (UNS8 *data, UNS32 *cursor, UNS16 *idx, UNS8 *subidx, UNS32 *size, UNS32 *value)
+{
+    // question... How to detect EOS??? We're going sequentially
+    // if index == 0 means EOS??? This is one idea, but pretty stupid
+    if (data == NULL || (*cursor < 4))
+        return -1;
+    
+    *idx = data[*cursor++] | data[*cursor++] << 8;
+    if (*idx == 0)
+        return 0;
+    
+    *subidx = data[*cursor++];
+    *size = data[*cursor++] | data[*cursor++] << 8 | data[*cursor++] << 16 | data[*cursor++] << 24;
+    
+    if (*size > 4 || *size < 1)
+        return -1;
+    
+    // and now load the data. we can only treat 32 bit values max
+    switch (*size) {
+        
+        case 1:
+            *value = data[*cursor++];
+            break;
+        case 2:
+            *value = data[*cursor++] | data[*cursor++] << 8;
+            break;
+        case 3:
+            DS302_DEBUG("Got a 3 byte data, this is stupid!!!\n");
+            *value = data[*cursor++] | data[*cursor++] << 8 | data[*cursor++] << 16;
+            break;
+        case 4:
+            *value = data[*cursor++] | data[*cursor++] << 8 | data[*cursor++] << 16 | data[*cursor++] << 24;
+            break;
+    }
+    
+    return 1;
 }
