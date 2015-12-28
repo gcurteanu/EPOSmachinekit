@@ -62,15 +62,8 @@ RUN_SM(myMachine, NULL, 0);
 // the 3 and 4 bytes are the guard time
 #define DS302_NL_GUARD_TIME(a)          (((a) >> 16) & 0xFFFF)
 
-typedef enum ds302_BootState {
-    BootInitialised = 0x00,
-    BootAttempted = 0x01,
-    BootCompleted = 0x02,
-    BootTimedOut = 0x03,
-} ds302_BootState;
-
 // holds the boot signals
-ds302_BootState ds302_boot_data[NMT_MAX_NODE_ID];
+ds302_boot_state_t ds302_boot_data[NMT_MAX_NODE_ID];
 
 // move to a pointer based state machine, using functions that are also callback capable for SDOs
 // type for functions is SDOCallback_t

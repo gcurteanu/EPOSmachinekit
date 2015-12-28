@@ -27,7 +27,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include "getopt.h"
 void pause(void)
 {
-	system("PAUSE");
+    system("PAUSE");
 }
 #else
 #include <unistd.h>
@@ -901,7 +901,7 @@ int main(int argc,char **argv)
 	INIT_SM(BOOTMASTER,_masterBoot,MB_INITIAL);
 
 	EnterMutex();
-	RUN_SM(_masterBoot, &EPOScontrol_Data, 0);
+	START_SM(_masterBoot, &EPOScontrol_Data, 0);
 	LeaveMutex();
 
 	// timer play

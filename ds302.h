@@ -145,9 +145,16 @@ extern const char* _sm_BootSlave_CodeToText[];
   Macro DEFINES a state machine structure
   The machine callback table is UNIQUE (not per instance). It needs to be built once
 */
+
+typedef enum {
+    MachInit = 0,
+    MachRun = 1,
+    MachStop = 2,
+} _mach_state_t;
+
 #define DECLARE_SM_TYPE(SM_NAME,SM_STATE_ENUM,SM_FUNCTION_TYPE,SM_CUSTOMDATA_TYPE)	\
 typedef struct {\
-    enum { MachInit, MachRun, MachStop }    machine_op;\
+    _mach_state_t                           machine_op;\
     SM_STATE_ENUM                           machine_state;\
     int                                     step_iter;\
     SM_CUSTOMDATA_TYPE                      machine_data;\
@@ -175,7 +182,7 @@ extern SM_FUNCTION_TYPE SM_NAME##_machine_callbacks[];
   Macro RUNS the state machine
 */
 #define START_SM(INST_NAME,...) \
-    if (INST_NAME.machine_op == MachInit) { INST_NAME.machine_op = MachRun; INST_NAME.machine_callbacks[INST_NAME.machine_state] (__VA_ARGS__); }
+    if (INST_NAME.machine_op != MachRun) { INST_NAME.machine_op = MachRun; INST_NAME.machine_callbacks[INST_NAME.machine_state] (__VA_ARGS__); }
 
 #define RUN_SM(INST_NAME,...) \
     if (INST_NAME.machine_op == MachRun) { INST_NAME.machine_callbacks[INST_NAME.machine_state] (__VA_ARGS__); }
@@ -233,16 +240,18 @@ int ds302_nl_node_in_list(CO_Data* d, UNS8 nodeid);
 
 
 typedef enum {
-    BootUnused,             // unused state machine, no slave defined
-    BootInitialised,        // boot initialised, we have a slave at this address
-    BootAttempted,          // boot was attempted for a optional slave
-    BootCompleted,          // boot completed ok for the slave
-    BootTimedOut,           // boot timed out for the slave
-} ds302_bootSlave_state_t;
+    BootUnused = 0,         // unused state machine, no slave defined
+    BootInitialised = 1,    // boot initialised, we have a slave at this address
+    BootAttempted = 2,      // boot was attempted for a optional slave
+    BootRunning = 3,        // boot process is running
+    BootCompleted = 4,      // boot completed ok for the slave
+    BootTimedOut = 5,       // boot timed out for the slave
+    BootError = 6,          // boot completed with error
+} ds302_boot_state_t;
 
 typedef struct {
     _sm_BootSlave_Codes     result;         // Result of the state machine
-    ds302_bootSlave_state_t state;          // Result of the overall boot process
+    ds302_boot_state_t      state;          // Result of the overall boot process
     
     char                    ViaDPath;       // In case we kept the slave UP during boot, don't reconfigure/start per DS-302
 
@@ -264,15 +273,9 @@ DECLARE_SM_TYPE(BOOTSLAVE, _sm_BootSlave_States, SDOCallback_t, _bootSlave_data_
 /*
     DS 302 global structure holding all the DS 302 information
 */
-typedef enum {
-    BootInit,
-    BootRunning,
-    BootCompleted,
-    BootError    
-} ds302_state_t;
 
 typedef struct {
-        ds302_state_t   bootState;                                          // DS-302 overall boot state
+        ds302_boot_state_t      bootState;                                  // DS-302 overall boot state
         
         DECLARE_SM (BOOTSLAVE, _bootSlave[NMT_MAX_NODE_ID]);                // boot slave machines
         DECLARE_SM (BOOTMASTER, _masterBoot);                               // master boot machine
@@ -285,4 +288,4 @@ void    ds302_init (CO_Data*);
 /* starts the DS-302 boot */
 void    ds302_start (CO_Data *);
 /* Gets the DS-302 boot status */
-ds302_state_t   ds302_status (CO_Data *);
+ds302_boot_state_t   ds302_status (CO_Data *);
