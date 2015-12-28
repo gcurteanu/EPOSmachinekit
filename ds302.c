@@ -1324,12 +1324,12 @@ int     ds302_get_next_dcf (UNS8 *data, UNS32 *cursor, UNS16 *idx, UNS8 *subidx,
     if (data == NULL || (*cursor < 4))
         return -1;
     
-    *idx = data[*(cursor++)] | data[*(cursor++)] << 8;
+    *idx = data[(*cursor)++] | data[(*cursor)++] << 8;
     if (*idx == 0)
         return 0;
     
-    *subidx = data[*(cursor++)];
-    *size = data[*(cursor++)] | data[*(cursor++)] << 8 | data[*(cursor++)] << 16 | data[*(cursor++)] << 24;
+    *subidx = data[(*cursor)++];
+    *size = data[(*cursor)++] | data[(*cursor)++] << 8 | data[(*cursor)++] << 16 | data[(*cursor)++] << 24;
     
     if (*size > 4 || *size < 1)
         return -1;
@@ -1338,17 +1338,17 @@ int     ds302_get_next_dcf (UNS8 *data, UNS32 *cursor, UNS16 *idx, UNS8 *subidx,
     switch (*size) {
         
         case 1:
-            *value = data[*(cursor++)];
+            *value = data[(*cursor)++];
             break;
         case 2:
-            *value = data[*(cursor++)] | data[*(cursor++)] << 8;
+            *value = data[(*cursor)++] | data[(*cursor)++] << 8;
             break;
         case 3:
             DS302_DEBUG("Got a 3 byte data, this is stupid!!!\n");
-            *value = data[*(cursor++)] | data[*(cursor++)] << 8 | data[*(cursor++)] << 16;
+            *value = data[(*cursor)++] | data[(*cursor)++] << 8 | data[(*cursor)++] << 16;
             break;
         case 4:
-            *value = data[*(cursor++)] | data[*(cursor++)] << 8 | data[*(cursor++)] << 16 | data[*(cursor++)] << 24;
+            *value = data[(*cursor)++] | data[(*cursor)++] << 8 | data[(*cursor)++] << 16 | data[(*cursor)++] << 24;
             break;
     }
     
