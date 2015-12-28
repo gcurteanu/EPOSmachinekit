@@ -785,7 +785,7 @@ void _sm_BootSlave_waitHeartbeat(CO_Data* d, UNS8 nodeid)
     DS302_DEBUG("Node state for slave %d is %x\n", nodeid, slavestate);
         
     // check if time elapsed
-    uint64_t    elapsedTime = rtuClock() - DATA_SM (ds302_data._bootSlave[slaveid]).ecsStart;
+    uint64_t    elapsedTime = rtuClock() - DATA_SM (ds302_data._bootSlave[nodeid]).ecsStart;
     // need to update to the proper value
     if (elapsedTime > 2*1000*1000) {
         // allow for the HB time to see a change
