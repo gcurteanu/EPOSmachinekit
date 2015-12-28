@@ -17,6 +17,7 @@ const char * epos_error_text (UNS16 errCode);
 #define EPOS_ERROR_TABLE
 
 epos_error_t epos_error_table[] = {
+    {0x0000, "No error"},
     {0x1000, "Generic error"},
     {0x2310, "Over Current error"},
     {0x3210, "Over Voltage error"},
