@@ -842,10 +842,10 @@ void _sm_BootSlave_startSlave(CO_Data* d, UNS8 nodeid)
     if (INITIAL_SM(ds302_data._bootSlave[nodeid])) {
         
         // am I allowed to start the nodes? 0x1F80 bit 3
-        if (0) {
+        if (ds302_bitcheck_32(d, 0x1F80, 0x00, DS302_DEVICE_MANUAL_START_SLAVE) == 0) {
             // yes, I am
             // do I have to start each one individually? 0x1F80 bit 1
-            if (1) {
+            if (ds302_bitcheck_32(d, 0x1F80, 0x00, DS302_DEVICE_START_ALL_SLAVES) == 0) {
                 // yes, I have
                 // well, then start the node
 
