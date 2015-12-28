@@ -804,7 +804,7 @@ void _sm_BootSlave_waitHeartbeat(CO_Data* d, UNS8 nodeid)
     
     // register the alarm for this one for 100ms
     // is this an ugly hack or what? Looks like we have an ID collision
-    SetAlarm (d, nodeid | nodeid << 24, (TimerCallback_t)_sm_BootSlave_waitHeartbeat, MS_TO_TIMEVAL(500), 0);
+    SetAlarm (d, nodeid | nodeid << 24, (TimerCallback_t)_sm_BootSlave_waitHeartbeat, MS_TO_TIMEVAL(100), 0);
 }
 
 void _sm_BootSlave_startNodeGuard(CO_Data* d, UNS8 nodeid)
