@@ -58,6 +58,7 @@ void _sm_BootSlave_errorControlStarted(CO_Data*, UNS8);  // here we need to chec
 void _sm_BootSlave_startSlave(CO_Data*, UNS8);
 
 typedef enum {
+    SM_Initialised = -2,    // SM initialised but not run
     SM_InProgress = -1,     // executed OK but waiting for IO
     SM_OK = 0,              // finished OK
     SM_Error = 1,           // finished with CAN errors

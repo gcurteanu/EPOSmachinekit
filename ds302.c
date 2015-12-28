@@ -1193,3 +1193,37 @@ void _sm_BootMaster_slavestart (CO_Data* d, UNS32 idx)
     // should not end up here, but just in case
     STOP_SM(_masterBoot);	
 }
+
+
+/* initialises the DS 302 structure */
+void ds302_init (CO_Data* d)
+{
+    // init the DS-302 master data
+    ds302_data.bootState = BootInitialised;
+    INIT_SM (BOOTMASTER, ds302_data._masterBoot, MB_INITIAL);
+    
+    // initialize the slave state machines
+    int slaveid;
+    for (slaveid = 1; slaveid < NMT_MAX_NODE_ID; slaveid ++){
+        // init the slave SM
+        INIT_SM (BOOTSLAVE, ds302_data._bootSlave[slaveid], SM_BOOTSLAVE_INITIAL);
+        // init the slave data
+        DATA_SM (ds302_data._bootSlave[slaveid]).state = BootUnused;
+        DATA_SM (ds302_data._bootSlave[slaveid]).result = SM_Initialised;
+        DATA_SM (ds302_data._bootSlave[slaveid]).ViaDPath = 0;
+        DATA_SM (ds302_data._bootSlave[slaveid]).bootStart = 0;
+        DATA_SM (ds302_data._bootSlave[slaveid]).Index1000 = 0x0;
+        DATA_SM (ds302_data._bootSlave[slaveid]).Index1018_1 = 0x0;
+        DATA_SM (ds302_data._bootSlave[slaveid]).Index1018_2 = 0x0;
+        DATA_SM (ds302_data._bootSlave[slaveid]).Index1018_3 = 0x0;
+        DATA_SM (ds302_data._bootSlave[slaveid]).Index1018_4 = 0x0;
+        DATA_SM (ds302_data._bootSlave[slaveid]).Index1020_1 = 0x0;
+        DATA_SM (ds302_data._bootSlave[slaveid]).Index1020_2 = 0x0;
+    }
+    
+    // ready to proceed. Need to decide if we boot ON-DEMAND or we rely on boot messages
+    // relying on boot messages seems to be a problem
+    // we can WAIT for a boot message before starting the boot process for example
+    // in order to ensure the slave is ready to process commands
+    
+}
