@@ -957,7 +957,7 @@ int main(int argc,char **argv)
 	//INIT_SM(BOOTMASTER,_masterBoot,MB_INITIAL);
 
     ds302_init (&EPOScontrol_Data);
-    ds302_setHeartbeat (&EPOScontrol_Data, 0x01, 1000);
+    ds302_setHeartbeat (&EPOScontrol_Data, 0x01, 1200);
 
 	EnterMutex();
 	ds302_start (&EPOScontrol_Data);

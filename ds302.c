@@ -209,7 +209,7 @@ void _sm_BootSlave_getDeviceType(CO_Data* d, UNS8 nodeid)
     // compare against the expected value in 0x1F84
     
     UNS32   Obj1F84;
-    UNS32   size = sizeof (Obj1F84);
+    size = sizeof (Obj1F84);
     
     DATA_SM(ds302_data._bootSlave[nodeid]).errorCode = readLocalDict (d, 0x1F84, nodeid, &Obj1F84, &size, 0, 0);
     if (DATA_SM(ds302_data._bootSlave[nodeid]).errorCode != OD_SUCCESSFUL) {
@@ -312,7 +312,6 @@ void _sm_BootSlave_getIdentification_1(CO_Data* d, UNS8 nodeid)
     }    
     
     UNS32   Obj1F85;
-    UNS32   size;
     size = sizeof (Obj1F85);
     DATA_SM(ds302_data._bootSlave[nodeid]).errorCode = readLocalDict (d, 0x1F85, nodeid, &Obj1F85, &size, 0, 0);
     if (DATA_SM(ds302_data._bootSlave[nodeid]).errorCode != OD_SUCCESSFUL) {
@@ -367,7 +366,6 @@ void _sm_BootSlave_getIdentification_2(CO_Data* d, UNS8 nodeid)
     }
 
     UNS32   Obj1F86;
-    UNS32   size;
     size = sizeof (Obj1F86);
     DATA_SM(ds302_data._bootSlave[nodeid]).errorCode = readLocalDict (d, 0x1F86, nodeid, &Obj1F86, &size, 0, 0);
     if (DATA_SM(ds302_data._bootSlave[nodeid]).errorCode != OD_SUCCESSFUL) {
@@ -422,7 +420,6 @@ void _sm_BootSlave_getIdentification_3(CO_Data* d, UNS8 nodeid)
     }
 
     UNS32   Obj1F87;
-    UNS32   size;
     size = sizeof (Obj1F87);
     DATA_SM(ds302_data._bootSlave[nodeid]).errorCode = readLocalDict (d, 0x1F87, nodeid, &Obj1F87, &size, 0, 0);
     if (DATA_SM(ds302_data._bootSlave[nodeid]).errorCode != OD_SUCCESSFUL) {
@@ -477,7 +474,6 @@ void _sm_BootSlave_getIdentification_4(CO_Data* d, UNS8 nodeid)
     }
 
     UNS32   Obj1F88;
-    UNS32   size;
     size = sizeof (Obj1F88);
     DATA_SM(ds302_data._bootSlave[nodeid]).errorCode = readLocalDict (d, 0x1F88, nodeid, &Obj1F88, &size, 0, 0);
     if (DATA_SM(ds302_data._bootSlave[nodeid]).errorCode != OD_SUCCESSFUL) {
@@ -531,7 +527,6 @@ void _sm_BootSlave_doConfigurationVersionChecks(CO_Data* d, UNS8 nodeid)
         }
 
         UNS32   Obj1F27;
-        UNS32   size;
         size = sizeof (Obj1F27);
         DATA_SM(ds302_data._bootSlave[nodeid]).errorCode = readLocalDict (d, 0x1F27, nodeid, &Obj1F27, &size, 0, 0);
         if (DATA_SM(ds302_data._bootSlave[nodeid]).errorCode != OD_SUCCESSFUL) {
@@ -586,7 +581,6 @@ void _sm_BootSlave_verifyConfigurationVersion_1(CO_Data* d, UNS8 nodeid)
     closeSDOtransfer(d, nodeid, SDO_CLIENT);  
 
     UNS32   Obj1F26;
-    UNS32   size;
     size = sizeof (Obj1F26);
     DATA_SM(ds302_data._bootSlave[nodeid]).errorCode = readLocalDict (d, 0x1F26, nodeid, &Obj1F26, &size, 0, 0);
     if (DATA_SM(ds302_data._bootSlave[nodeid]).errorCode != OD_SUCCESSFUL) {
@@ -595,7 +589,7 @@ void _sm_BootSlave_verifyConfigurationVersion_1(CO_Data* d, UNS8 nodeid)
     }    
 
     // verify against required data in 0x1F26
-    if (Obj1F26 && &DATA_SM(ds302_data._bootSlave[nodeid]).Index1020_1 != Obj1F26) {                  
+    if (Obj1F26 && DATA_SM(ds302_data._bootSlave[nodeid]).Index1020_1 != Obj1F26) {                  
         // mismatch, go directly to download
         //SM_SWITCH_STATE(SM_BOOTSLAVE_DOWNLOAD_CONFIG,d,nodeid)
         SWITCH_SM (ds302_data._bootSlave[nodeid], SM_BOOTSLAVE_DOWNLOAD_CONFIG, d, nodeid);
@@ -641,7 +635,6 @@ void _sm_BootSlave_verifyConfigurationVersion_2(CO_Data* d, UNS8 nodeid)
     closeSDOtransfer(d, nodeid, SDO_CLIENT);  
 
     UNS32   Obj1F27;
-    UNS32   size;
     size = sizeof (Obj1F27);
     DATA_SM(ds302_data._bootSlave[nodeid]).errorCode = readLocalDict (d, 0x1F27, nodeid, &Obj1F27, &size, 0, 0);
     if (DATA_SM(ds302_data._bootSlave[nodeid]).errorCode != OD_SUCCESSFUL) {
@@ -650,7 +643,7 @@ void _sm_BootSlave_verifyConfigurationVersion_2(CO_Data* d, UNS8 nodeid)
     }
         
     // verify against required data in 0x1F27
-    if (Obj1F27 && &DATA_SM(ds302_data._bootSlave[nodeid]).Index1020_2 != Obj1F27) {
+    if (Obj1F27 && DATA_SM(ds302_data._bootSlave[nodeid]).Index1020_2 != Obj1F27) {
         // mismatch, go directly to download
         //SM_SWITCH_STATE(SM_BOOTSLAVE_DOWNLOAD_CONFIG,d,nodeid)
         SWITCH_SM (ds302_data._bootSlave[nodeid], SM_BOOTSLAVE_DOWNLOAD_CONFIG, d, nodeid);
