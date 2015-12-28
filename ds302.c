@@ -143,13 +143,19 @@ void _sm_BootSlave_initial(CO_Data* d, UNS8 nodeid)
 
     DS302_DEBUG("_sm_BootSlave_initial (%d)\n", nodeid);
 
-    if (0) {
+    if (!ds302_nl_node_in_list(d, nodeid)) {
         DS302_DEBUG("_sm_BootSlave_initial Error A (%d)\n", nodeid);
-        SM_ERROR(nodeid, SM_ErrA);
+        //SM_ERROR(nodeid, SM_ErrA);
+        DATA_SM(ds302_data._bootSlave[nodeid]).result = SM_ErrA;
+        //stop the machine
+        STOP_SM(ds302_data._bootSlave[nodeid]);
+        return;
     } else {
         DS302_DEBUG("_sm_BootSlave_initial switch to SM_BOOTSLAVE_GET_DEVTYPE (%d)\n", nodeid);
         // go to the next state
-        SM_SWITCH_STATE(SM_BOOTSLAVE_GET_DEVTYPE,d,nodeid)
+        //SM_SWITCH_STATE(SM_BOOTSLAVE_GET_DEVTYPE,d,nodeid)
+        SWITCH_SM(ds302_data._bootSlave[nodeid], SM_BOOTSLAVE_GET_DEVTYPE, d, nodeid);
+        return;
     }
 }
 
@@ -157,7 +163,8 @@ void _sm_BootSlave_getDeviceType(CO_Data* d, UNS8 nodeid)
 {
     DS302_DEBUG("_sm_BootSlave_getDeviceType (%d)\n", nodeid);
 
-    if (SM_INITIAL(nodeid)) {
+    //if (SM_INITIAL(nodeid)) {
+    if (INITIAL_SM(ds302_data._bootSlave[nodeid]))
         DS302_DEBUG("_sm_BootSlave_getDeviceType initial run (%d)\n", nodeid);
 
         // code for the first run only
@@ -171,8 +178,9 @@ void _sm_BootSlave_getDeviceType(CO_Data* d, UNS8 nodeid)
 
     // we end here on callback
 
-    UNS32	size = sizeof(SM_DATA(nodeid,Index1000));
-    UNS8	retcode = getReadResultNetworkDict (d, nodeid, &SM_DATA(nodeid,Index1000), &size, &SM_DATA(nodeid,error_code));
+    UNS32	size = sizeof(DATA_SM(ds302_data._bootSlave[nodeid]).Index1000);
+    UNS8	retcode = getReadResultNetworkDict (d, nodeid, &DATA_SM(ds302_data._bootSlave[nodeid]).Index1000, &size,
+            &DATA_SM(ds302_data._bootSlave[nodeid]).errorCode);
 
     if (retcode == SDO_UPLOAD_IN_PROGRESS || retcode == SDO_DOWNLOAD_IN_PROGRESS) {
         DS302_DEBUG("_sm_BootSlave_getDeviceType SDO op in progress (%d)\n", nodeid);
@@ -180,42 +188,50 @@ void _sm_BootSlave_getDeviceType(CO_Data* d, UNS8 nodeid)
         return;
     }
 
-        if(retcode != SDO_FINISHED) {
+    /* Finalise last SDO transfer with this node */
+    closeSDOtransfer(d, nodeid, SDO_CLIENT);
+
+    if(retcode != SDO_FINISHED) {
         DS302_DEBUG("_sm_BootSlave_getDeviceType SDO error (%d) = %x\n", nodeid, retcode);
-                SM_ERROR(nodeid, SM_ErrB);
-        }
-        /* Finalise last SDO transfer with this node */
-        closeSDOtransfer(d, nodeid, SDO_CLIENT);
+        //SM_ERROR(nodeid, SM_ErrB);
+        DATA_SM(ds302_data._bootSlave[nodeid]).result = SM_ErrB;
+        STOP_SM(ds302_data._bootSlave[nodeid]);
+        return;
+    }
+    
+    // we end here only if transfer was ok
+    DS302_DEBUG("_sm_BootSlave_getDeviceType no issues, logic proceeding (%d)\n", nodeid);
 
-    // if we're not done YET proceed
-    if (!SM_IS_FINISHED(nodeid)) {
-
-        DS302_DEBUG("_sm_BootSlave_getDeviceType no issues, logic proceeding (%d)\n", nodeid);
-
-        // we have the data in Index1000
-        // compare against the expected value in 0x1F84
+    // we have the data in Index1000
+    // compare against the expected value in 0x1F84
+    // dummy check for now
+    if (0) {
+            //SM_ERROR(nodeid, SM_ErrC);
+            DATA_SM(ds302_data._bootSlave[nodeid]).result = SM_ErrC;
+            STOP_SM(ds302_data._bootSlave[nodeid]);
+            return;
+    } else {
+        // everything OK, see if we need to check IDs or not
         // dummy check for now
-        if (0) {
-            SM_ERROR(nodeid, SM_ErrC);
+        if (1) {
+            // switch to pulling the IDs
+            //SM_SWITCH_STATE(SM_BOOTSLAVE_GET_ID1,d,nodeid)
+            SWITCH_SM(ds302_data._bootSlave[nodeid], SM_BOOTSLAVE_GET_ID1, d, nodeid);
+            return
         } else {
-            // everything OK, see if we need to check IDs or not
-            // dummy check for now
-            if (1) {
-                // switch to pulling the IDs
-                SM_SWITCH_STATE(SM_BOOTSLAVE_GET_ID1,d,nodeid)
-            } else {
-                // skip pulling the IDs chain
-                SM_SWITCH_STATE(SM_BOOTSLAVE_DECIDE_BC,d,nodeid)
-            }
+            // skip pulling the IDs chain
+            //SM_SWITCH_STATE(SM_BOOTSLAVE_DECIDE_BC,d,nodeid)
+            SWITCH_SM(ds302_data._bootSlave[nodeid], SM_BOOTSLAVE_DECIDE_BC, d, nodeid);
+            return;
         }
-    } // else finished and we're done here
+    }
 }
 
 void _sm_BootSlave_getIdentification_1(CO_Data* d, UNS8 nodeid)
 {
     DS302_DEBUG("_sm_BootSlave_getIdentification_1\n");
 
-    if (SM_INITIAL(nodeid)) {
+    if (INITIAL_SM(ds302_data._bootSlave[nodeid])) {
         DS302_DEBUG("_sm_BootSlave_getIdentification_1 initial call\n");
 
         // code for the first run only  
@@ -230,35 +246,42 @@ void _sm_BootSlave_getIdentification_1(CO_Data* d, UNS8 nodeid)
 
     // we end here on callback
 
-    UNS32   size = sizeof(SM_DATA(nodeid,Index1018_1));
-    UNS8    retcode = getReadResultNetworkDict (d, nodeid, &SM_DATA(nodeid,Index1018_1), &size, &SM_DATA(nodeid,error_code));
+    UNS32   size = sizeof(DATA_SM(ds302_data._bootSlave[nodeid]).Index1018_1);
+    UNS8    retcode = getReadResultNetworkDict (d, nodeid, &DATA_SM(ds302_data._bootSlave[nodeid]).Index1018_1, &size,
+            &DATA_SM(ds302_data._bootSlave[nodeid]).error_code);
 
     if (retcode == SDO_UPLOAD_IN_PROGRESS || retcode == SDO_DOWNLOAD_IN_PROGRESS)
             // do nothing, outside of callback call
             return;
 
-    if(retcode != SDO_FINISHED) {
-            SM_ERROR(nodeid, SM_ErrD);
-    }
     /* Finalise last SDO transfer with this node */
     closeSDOtransfer(d, nodeid, SDO_CLIENT);
 
-    // if we're not done YET proceed
-    if (!SM_IS_FINISHED(nodeid)) {
-        // verify against required data in 0x1F85
-        if (0) {
-            // mismatch, stop process
-            SM_ERROR(nodeid, SM_ErrD);
-        } else {
-            // go to the next one
-            SM_SWITCH_STATE(SM_BOOTSLAVE_GET_ID2,d,nodeid)
-        }
-    } // else finished and we're done here
+    if(retcode != SDO_FINISHED) {
+            //SM_ERROR(nodeid, SM_ErrD);
+            DATA_SM(ds302_data._bootSlave[nodeid]).result = SM_ErrD;
+            STOP_SM(ds302_data._bootSlave[nodeid]);
+            return;
+    }    
+    
+    // verify against required data in 0x1F85
+    if (0) {
+        // mismatch, stop process
+        //SM_ERROR(nodeid, SM_ErrD);
+        DATA_SM(ds302_data._bootSlave[nodeid]).result = SM_ErrD;
+        STOP_SM(ds302_data._bootSlave[nodeid]);
+        return;
+    } else {
+        // go to the next one
+        //SM_SWITCH_STATE(SM_BOOTSLAVE_GET_ID2,d,nodeid)
+        SWITCH_SM(ds302_data._bootSlave[nodeid], SM_BOOTSLAVE_GET_ID2, d, nodeid);
+        return;
+    }
 }
 
 void _sm_BootSlave_getIdentification_2(CO_Data* d, UNS8 nodeid)
 {
-    if (SM_INITIAL(nodeid)) {      
+    if (INITIAL_SM(ds302_data._bootSlave[nodeid])) {      
         // code for the first run only  
         // read 0x1018 0x02                       
         // self callback      
@@ -269,35 +292,42 @@ void _sm_BootSlave_getIdentification_2(CO_Data* d, UNS8 nodeid)
 
     // we end here on callback
 
-    UNS32   size = sizeof(SM_DATA(nodeid,Index1018_2));
-    UNS8    retcode = getReadResultNetworkDict (d, nodeid, &SM_DATA(nodeid,Index1018_2), &size, &SM_DATA(nodeid,error_code));
+    UNS32   size = sizeof(DATA_SM(ds302_data._bootSlave[nodeid]).Index1018_2);
+    UNS8    retcode = getReadResultNetworkDict (d, nodeid, &DATA_SM(ds302_data._bootSlave[nodeid]).Index1018_2, &size, 
+            &DATA_SM(ds302_data._bootSlave[nodeid]).errorCode);
 
     if (retcode == SDO_UPLOAD_IN_PROGRESS || retcode == SDO_DOWNLOAD_IN_PROGRESS)
         // do nothing, outside of callback call
         return;
 
-    if(retcode != SDO_FINISHED) {
-        SM_ERROR(nodeid, SM_ErrM);
-    }
     /* Finalise last SDO transfer with this node */
     closeSDOtransfer(d, nodeid, SDO_CLIENT);  
+        
+    if(retcode != SDO_FINISHED) {
+        //SM_ERROR(nodeid, SM_ErrM);
+        DATA_SM(ds302_data._bootSlave[nodeid]).result = SM_ErrM;
+        STOP_SM(ds302_data._bootSlave[nodeid]);
+        return;
+    }
 
-    // if we're not done YET proceed
-    if (!SM_IS_FINISHED(nodeid)) {
-        // verify against required data in 0x1F86
-        if (0) {                  
-            // mismatch, stop process
-            SM_ERROR(nodeid, SM_ErrM);
-        } else {                               
-            // go to the next one               
-            SM_SWITCH_STATE(SM_BOOTSLAVE_GET_ID3,d,nodeid)
-        }
-    } // else finished and we're done here
+    // verify against required data in 0x1F86
+    if (0) {                  
+        // mismatch, stop process
+        // SM_ERROR(nodeid, SM_ErrM);
+        DATA_SM(ds302_data._bootSlave[nodeid]).result = SM_ErrM;
+        STOP_SM(ds302_data._bootSlave[nodeid]);
+        return;
+    } else {                               
+        // go to the next one               
+        //SM_SWITCH_STATE(SM_BOOTSLAVE_GET_ID3,d,nodeid)
+        SWITCH_SM(ds302_data._bootSlave[nodeid], SM_BOOTSLAVE_GET_ID3, d, nodeid);
+        return;
+    }
 }
 
 void _sm_BootSlave_getIdentification_3(CO_Data* d, UNS8 nodeid)
 {
-    if (SM_INITIAL(nodeid)) {      
+    if (INITIAL_SM(ds302_data._bootSlave[nodeid])) {      
         // code for the first run only  
         // read 0x1018 0x03                       
         // self callback      
@@ -308,35 +338,42 @@ void _sm_BootSlave_getIdentification_3(CO_Data* d, UNS8 nodeid)
 
     // we end here on callback
 
-    UNS32   size = sizeof(SM_DATA(nodeid,Index1018_3));
-    UNS8    retcode = getReadResultNetworkDict (d, nodeid, &SM_DATA(nodeid,Index1018_3), &size, &SM_DATA(nodeid,error_code));
+    UNS32   size = sizeof(DATA_SM(ds302_data._bootSlave[nodeid]).Index1018_3);
+    UNS8    retcode = getReadResultNetworkDict (d, nodeid, &DATA_SM(ds302_data._bootSlave[nodeid]).Index1018_3, &size, 
+            &DATA_SM(ds302_data._bootSlave[nodeid]).errorCode);
 
     if (retcode == SDO_UPLOAD_IN_PROGRESS || retcode == SDO_DOWNLOAD_IN_PROGRESS)
         // do nothing, outside of callback call
         return;
 
-    if(retcode != SDO_FINISHED) {
-        SM_ERROR(nodeid, SM_ErrN);
-    }
     /* Finalise last SDO transfer with this node */
     closeSDOtransfer(d, nodeid, SDO_CLIENT);  
 
-    // if we're not done YET proceed
-    if (!SM_IS_FINISHED(nodeid)) {
-        // verify against required data in 0x1F87
-        if (0) {                  
-            // mismatch, stop process
-            SM_ERROR(nodeid, SM_ErrN);
-        } else {                               
-            // go to the next one               
-            SM_SWITCH_STATE(SM_BOOTSLAVE_GET_ID4,d,nodeid)
-        }
-    } // else finished and we're done here
+    if(retcode != SDO_FINISHED) {
+        // SM_ERROR(nodeid, SM_ErrN);
+        DATA_SM(ds302_data._bootSlave[nodeid]).result = SM_ErrN;
+        STOP_SM(ds302_data._bootSlave[nodeid]);
+        return;
+    }
+
+    // verify against required data in 0x1F87
+    if (0) {                  
+        // mismatch, stop process
+        //SM_ERROR(nodeid, SM_ErrN);
+        DATA_SM(ds302_data._bootSlave[nodeid]).result = SM_ErrN;
+        STOP_SM(ds302_data._bootSlave[nodeid]);
+        return;
+    } else {                               
+        // go to the next one               
+        //SM_SWITCH_STATE(SM_BOOTSLAVE_GET_ID4,d,nodeid)
+        SWITCH_SM(ds302_data._bootSlave[nodeid], SM_BOOTSLAVE_GET_ID4, d, nodeid);
+        return;
+    }
 }
 
 void _sm_BootSlave_getIdentification_4(CO_Data* d, UNS8 nodeid)
 {
-    if (SM_INITIAL(nodeid)) {      
+    if (INITIAL_SM(ds302_data._bootSlave[nodeid])) {      
         // code for the first run only  
         // read 0x1018 0x04                       
         // self callback      
@@ -347,46 +384,55 @@ void _sm_BootSlave_getIdentification_4(CO_Data* d, UNS8 nodeid)
 
     // we end here on callback
 
-    UNS32   size = sizeof(SM_DATA(nodeid,Index1018_4));
-    UNS8    retcode = getReadResultNetworkDict (d, nodeid, &SM_DATA(nodeid,Index1018_4), &size, &SM_DATA(nodeid,error_code));
+    UNS32   size = sizeof(DATA_SM(ds302_data._bootSlave[nodeid]).Index1018_4);
+    UNS8    retcode = getReadResultNetworkDict (d, nodeid, &DATA_SM(ds302_data._bootSlave[nodeid]).Index1018_4, &size, 
+            &DATA_SM(ds302_data._bootSlave[nodeid]).errorCode);
 
     if (retcode == SDO_UPLOAD_IN_PROGRESS || retcode == SDO_DOWNLOAD_IN_PROGRESS)
         // do nothing, outside of callback call
         return;
 
-    if(retcode != SDO_FINISHED) {
-        SM_ERROR(nodeid, SM_ErrO);
-    }
     /* Finalise last SDO transfer with this node */
     closeSDOtransfer(d, nodeid, SDO_CLIENT);  
 
-    // if we're not done YET proceed
-    if (!SM_IS_FINISHED(nodeid)) {
-        // verify against required data in 0x1F85
-        if (0) {                  
-            // mismatch, stop process
-            SM_ERROR(nodeid, SM_ErrO);
-        } else {                               
-            // go to the next one               
-            SM_SWITCH_STATE(SM_BOOTSLAVE_DECIDE_BC,d,nodeid)
-        }
-    } // else finished and we're done here
+    if(retcode != SDO_FINISHED) {
+        // SM_ERROR(nodeid, SM_ErrO);
+        DATA_SM(ds302_data._bootSlave[nodeid]).result = SM_ErrO;
+        STOP_SM(ds302_data._bootSlave[nodeid]);
+        return;
+    }
+
+    // verify against required data in 0x1F85
+    if (0) {                  
+        // mismatch, stop process
+        //SM_ERROR(nodeid, SM_ErrO);
+        DATA_SM(ds302_data._bootSlave[nodeid]).result = SM_ErrO;
+        STOP_SM(ds302_data._bootSlave[nodeid]);
+        return;
+    } else {                               
+        // go to the next one               
+        //SM_SWITCH_STATE(SM_BOOTSLAVE_DECIDE_BC,d,nodeid)
+        SWITCH_SM(ds302_data._bootSlave[nodeid], SM_BOOTSLAVE_DECIDE_BC, d, nodeid);
+        return;
+    }
 }
 
 void _sm_BootSlave_decideBCPath(CO_Data* d, UNS8 nodeid)
 {
     DS302_DEBUG("_sm_BootSlave_decideBCPath\n");
-    if (SM_INITIAL(nodeid)) {      
+    if (INITIAL_SM(ds302_data._bootSlave[nodeid])) {      
         // code for the first run only
         // switch to path C, path B is not implemented yet
-        SM_SWITCH_STATE(SM_BOOTSLAVE_DO_CONFVER_CHECK,d,nodeid)
+        // SM_SWITCH_STATE(SM_BOOTSLAVE_DO_CONFVER_CHECK,d,nodeid)
+        SWITCH_SM (ds302_data._bootSlave[nodeid], SM_BOOTSLAVE_DO_CONFVER_CHECK, d, nodeid);
+        return;
     }	
 }
 
 void _sm_BootSlave_doConfigurationVersionChecks(CO_Data* d, UNS8 nodeid)
 {
     DS302_DEBUG("_sm_BootSlave_doConfigurationVersionChecks\n");
-    if (SM_INITIAL(nodeid)) {      
+    if (INITIAL_SM(ds302_data._bootSlave[nodeid])) {      
         // code for the first run only  
        
         // see if we have 0x1F26 and 0x1F27 defined in the config for the node
@@ -394,10 +440,14 @@ void _sm_BootSlave_doConfigurationVersionChecks(CO_Data* d, UNS8 nodeid)
 
         if (0) {
             // we don't have the values, go straight to download
-            SM_SWITCH_STATE(SM_BOOTSLAVE_DOWNLOAD_CONFIG,d,nodeid)
+            //SM_SWITCH_STATE(SM_BOOTSLAVE_DOWNLOAD_CONFIG,d,nodeid)
+            SWITCH_SM (ds302_data._bootSlave[nodeid], SM_BOOTSLAVE_DOWNLOAD_CONFIG, d, nodeid);
+            return;
         } else {
             // we have the values, get them and compare them
-            SM_SWITCH_STATE(SM_BOOTSLAVE_VERIFY_CONFVER_1,d,nodeid)
+            //SM_SWITCH_STATE(SM_BOOTSLAVE_VERIFY_CONFVER_1,d,nodeid)
+            SWITCH_SM (ds302_data._bootSlave[nodeid], SM_BOOTSLAVE_VERIFY_CONFVER_1, d, nodeid);
+            return
         }
     }  
 }
@@ -405,7 +455,7 @@ void _sm_BootSlave_doConfigurationVersionChecks(CO_Data* d, UNS8 nodeid)
 void _sm_BootSlave_verifyConfigurationVersion_1(CO_Data* d, UNS8 nodeid)
 {
     DS302_DEBUG("_sm_BootSlave_verifyConfigurationVersion_1\n");
-    if (SM_INITIAL(nodeid)) {      
+    if (INITIAL_SM(ds302_data._bootSlave[nodeid])) {      
         // code for the first run only  
         // read 0x1020 0x01           
         // self callback      
@@ -416,8 +466,9 @@ void _sm_BootSlave_verifyConfigurationVersion_1(CO_Data* d, UNS8 nodeid)
 
     // we end here on callback
 
-    UNS32   size = sizeof(SM_DATA(nodeid,Index1020_1));
-    UNS8    retcode = getReadResultNetworkDict (d, nodeid, &SM_DATA(nodeid,Index1020_1), &size, &SM_DATA(nodeid,error_code));
+    UNS32   size = sizeof(DATA_SM(ds302_data._bootSlave[nodeid]).Index1020_1);
+    UNS8    retcode = getReadResultNetworkDict (d, nodeid, &DATA_SM(ds302_data._bootSlave[nodeid]).Index1020_1, &size, 
+            &DATA_SM(ds302_data._bootSlave[nodeid]).errorCode);
 
     if (retcode == SDO_UPLOAD_IN_PROGRESS || retcode == SDO_DOWNLOAD_IN_PROGRESS)
         // do nothing, outside of callback call
@@ -432,23 +483,24 @@ void _sm_BootSlave_verifyConfigurationVersion_1(CO_Data* d, UNS8 nodeid)
     /* Finalise last SDO transfer with this node */
     closeSDOtransfer(d, nodeid, SDO_CLIENT);  
 
-    // if we're not done YET proceed
-    if (!SM_IS_FINISHED(nodeid)) {
-        // verify against required data in 0x1F26
-        if (0) {                  
-            // mismatch, go directly to download
-            SM_SWITCH_STATE(SM_BOOTSLAVE_DOWNLOAD_CONFIG,d,nodeid)                        
-        } else {                               
-            // go to the next one               
-            SM_SWITCH_STATE(SM_BOOTSLAVE_VERIFY_CONFVER_2,d,nodeid)
-        }
-    } // else finished and we're done here
+    // verify against required data in 0x1F26
+    if (0) {                  
+        // mismatch, go directly to download
+        //SM_SWITCH_STATE(SM_BOOTSLAVE_DOWNLOAD_CONFIG,d,nodeid)
+        SWITCH_SM (ds302_data._bootSlave[nodeid], SM_BOOTSLAVE_DOWNLOAD_CONFIG, d, nodeid);
+        return;
+    } else {                               
+        // go to the next one               
+        //SM_SWITCH_STATE(SM_BOOTSLAVE_VERIFY_CONFVER_2,d,nodeid)
+        SWITCH_SM (ds302_data._bootSlave[nodeid], SM_BOOTSLAVE_VERIFY_CONFVER_2, d, nodeid);
+        return;
+    }
 }
 
 void _sm_BootSlave_verifyConfigurationVersion_2(CO_Data* d, UNS8 nodeid)
 {
     DS302_DEBUG("_sm_BootSlave_verifyConfigurationVersion_2\n");
-    if (SM_INITIAL(nodeid)) {      
+    if (INITIAL_SM(ds302_data._bootSlave[nodeid])) {      
         // code for the first run only         
         // read 0x1020 0x02 
         // self callback      
@@ -459,8 +511,9 @@ void _sm_BootSlave_verifyConfigurationVersion_2(CO_Data* d, UNS8 nodeid)
 
     // we end here on callback
 
-    UNS32   size = sizeof(SM_DATA(nodeid,Index1020_2)); 
-    UNS8    retcode = getReadResultNetworkDict (d, nodeid, &SM_DATA(nodeid,Index1020_2), &size, &SM_DATA(nodeid,error_code));
+    UNS32   size = sizeof(DATA_SM(ds302_data._bootSlave[nodeid]).Index1020_2); 
+    UNS8    retcode = getReadResultNetworkDict (d, nodeid, &DATA_SM(ds302_data._bootSlave[nodeid]).Index1020_2, &size, 
+            &DATA_SM(ds302_data._bootSlave[nodeid]).errorCode);
 
     if (retcode == SDO_UPLOAD_IN_PROGRESS || retcode == SDO_DOWNLOAD_IN_PROGRESS)
         // do nothing, outside of callback call
@@ -475,47 +528,55 @@ void _sm_BootSlave_verifyConfigurationVersion_2(CO_Data* d, UNS8 nodeid)
     /* Finalise last SDO transfer with this node */
     closeSDOtransfer(d, nodeid, SDO_CLIENT);  
 
-    // if we're not done YET proceed
-    if (!SM_IS_FINISHED(nodeid)) {
-        // verify against required data in 0x1F27
-        if (0) {                  
-            // mismatch, go directly to download
-            SM_SWITCH_STATE(SM_BOOTSLAVE_DOWNLOAD_CONFIG,d,nodeid)                        
-        } else {                               
-            // configuration is at the exepected levels, skip configuration download
-            // go to start error control services   
-            SM_SWITCH_STATE(SM_BOOTSLAVE_START_ERRCTL,d,nodeid)
-        }
-    } // else finished and we're done here
+    // verify against required data in 0x1F27
+    if (0) {                  
+        // mismatch, go directly to download
+        //SM_SWITCH_STATE(SM_BOOTSLAVE_DOWNLOAD_CONFIG,d,nodeid)
+        SWITCH_SM (ds302_data._bootSlave[nodeid], SM_BOOTSLAVE_DOWNLOAD_CONFIG, d, nodeid);
+        return;
+    } else {                               
+        // configuration is at the exepected levels, skip configuration download
+        // go to start error control services   
+        //SM_SWITCH_STATE(SM_BOOTSLAVE_START_ERRCTL,d,nodeid)
+        SWITCH_SM (ds302_data._bootSlave[nodeid], SM_BOOTSLAVE_START_ERRCTL, d, nodeid);
+        return;
+    }
 }
 
 void _sm_BootSlave_downloadConfiguration(CO_Data* d, UNS8 nodeid)
 {
     DS302_DEBUG("_sm_BootSlave_downloadConfiguration\n");
     //// this is dummy for now. Doesn't do anything other than keep the SM functioning correctly
-    if (SM_INITIAL(nodeid)) {      
+    if (INITIAL_SM(ds302_data._bootSlave[nodeid])) {
         // code for the first run only         
     }
 
     if (0) {
         // we had an error in the configuration download
-        SM_ERROR(nodeid, SM_ErrJ);
+        //SM_ERROR(nodeid, SM_ErrJ);
+        DATA_SM(ds302_data._bootSlave[nodeid]).result = SM_ErrJ;
+        STOP_SM(ds302_data._bootSlave[nodeid]);
+        return;
     } else {
         // configuration downloaded OK, go to error control
-        SM_SWITCH_STATE(SM_BOOTSLAVE_START_ERRCTL,d,nodeid)
+        //SM_SWITCH_STATE(SM_BOOTSLAVE_START_ERRCTL,d,nodeid)
+        SWITCH_SM (ds302_data._bootSlave[nodeid], SM_BOOTSLAVE_START_ERRCTL, d, nodeid);
+        return;
     }
 }
 
 void _sm_BootSlave_startErrorControlService(CO_Data* d, UNS8 nodeid)
 {
     DS302_DEBUG("_sm_BootSlave_startErrorControlService\n");
-    if (SM_INITIAL(nodeid)) {      
+    if (INITIAL_SM(ds302_data._bootSlave[nodeid])) {      
         // code for the first run only
 
         // is the heartbeat consumer non-zero for this node
         if (0) {
             // non-zero consumer, use HB
-            SM_SWITCH_STATE(SM_BOOTSLAVE_WAIT_HB,d,nodeid)
+            //SM_SWITCH_STATE(SM_BOOTSLAVE_WAIT_HB,d,nodeid)
+            SWITCH_SM (ds302_data._bootSlave[nodeid], SM_BOOTSLAVE_WAIT_HB, d, nodeid);
+            return;
         } else {
             // zero consumer, use NodeGuard
             // is the node still on the Network list (0x1F81 bit 0)
@@ -525,16 +586,22 @@ void _sm_BootSlave_startErrorControlService(CO_Data* d, UNS8 nodeid)
                 if (0) {
                     //node guard time non-zero
                     // start Node Guard for the node
-                    SM_SWITCH_STATE(SM_BOOTSLAVE_START_NODEGUARD,d,nodeid)
+                    //SM_SWITCH_STATE(SM_BOOTSLAVE_START_NODEGUARD,d,nodeid)
+                    SWITCH_SM (ds302_data._bootSlave[nodeid], SM_BOOTSLAVE_START_NODEGUARD, d, nodeid);
+                    return;
                 } else {
                     //node guard time zero
                     // go to error control started
-                    SM_SWITCH_STATE(SM_BOOTSLAVE_ERRCTL_STARTED,d,nodeid)
+                    //SM_SWITCH_STATE(SM_BOOTSLAVE_ERRCTL_STARTED,d,nodeid)
+                    SWITCH_SM (ds302_data._bootSlave[nodeid], SM_BOOTSLAVE_ERRCTL_STARTED, d, nodeid);
+                    return;
                 }
             } else {
                 // if no, error control completed OK
                 // go to error control started
-                SM_SWITCH_STATE(SM_BOOTSLAVE_ERRCTL_STARTED,d,nodeid)
+                //SM_SWITCH_STATE(SM_BOOTSLAVE_ERRCTL_STARTED,d,nodeid)
+                SWITCH_SM (ds302_data._bootSlave[nodeid], SM_BOOTSLAVE_ERRCTL_STARTED, d, nodeid);
+                return;
             }
         }
     }
@@ -545,8 +612,10 @@ void _sm_BootSlave_waitHeartbeat(CO_Data* d, UNS8 nodeid)
 {
     DS302_DEBUG("_sm_BootSlave_waitHeartbeat\n");
     // dummy for now
-    if (SM_INITIAL(nodeid)) {
-        SM_SWITCH_STATE(SM_BOOTSLAVE_ERRCTL_STARTED,d,nodeid)
+    if (INITIAL_SM(ds302_data._bootSlave[nodeid])) {
+        //SM_SWITCH_STATE(SM_BOOTSLAVE_ERRCTL_STARTED,d,nodeid)
+        SWITCH_SM (ds302_data._bootSlave[nodeid], SM_BOOTSLAVE_ERRCTL_STARTED, d, nodeid);
+        return;
     }
 }
 
@@ -554,20 +623,27 @@ void _sm_BootSlave_startNodeGuard(CO_Data* d, UNS8 nodeid)
 {
     DS302_DEBUG("_sm_BootSlave_startNodeGuard\n");
     // dummy for now
-    if (SM_INITIAL(nodeid)) {
-        SM_SWITCH_STATE(SM_BOOTSLAVE_ERRCTL_STARTED,d,nodeid)
+    if (INITIAL_SM(ds302_data._bootSlave[nodeid])) {
+        //SM_SWITCH_STATE(SM_BOOTSLAVE_ERRCTL_STARTED,d,nodeid)
+        SWITCH_SM (ds302_data._bootSlave[nodeid], SM_BOOTSLAVE_ERRCTL_STARTED, d, nodeid);
+        return;
     }
 }
 
 void _sm_BootSlave_errorControlStarted(CO_Data* d, UNS8 nodeid)  // here we need to check if we went D/noconfig and exit
 {
     DS302_DEBUG("_sm_BootSlave_errorControlStarted\n");
-    if (SM_INITIAL(nodeid)) {
+    if (INITIAL_SM(ds302_data._bootSlave[nodeid])) {
         // simple decisional node, have we went via D path or not
-        if (SM_DATA(nodeid,ViaDPath)) {
-            SM_ERROR(nodeid, SM_ErrL);			
+        if (DATA_SM(ds302_data._bootSlave[nodeid])ViaDPath) {
+            //SM_ERROR(nodeid, SM_ErrL);
+            DATA_SM(ds302_data._bootSlave[nodeid]).result = SM_ErrL;
+            STOP_SM(ds302_data._bootSlave[nodeid]);
+            return;
         } else {
-            SM_SWITCH_STATE(SM_BOOTSLAVE_START_SLAVE,d,nodeid)
+            //SM_SWITCH_STATE(SM_BOOTSLAVE_START_SLAVE,d,nodeid)
+            SWITCH_SM (ds302_data._bootSlave[nodeid], SM_BOOTSLAVE_START_SLAVE, d, nodeid);
+            return;
         }
     }
 }
@@ -575,7 +651,7 @@ void _sm_BootSlave_errorControlStarted(CO_Data* d, UNS8 nodeid)  // here we need
 void _sm_BootSlave_startSlave(CO_Data* d, UNS8 nodeid)
 {
     DS302_DEBUG("_sm_BootSlave_startSlave\n");
-    if (SM_INITIAL(nodeid)) {
+    if (INITIAL_SM(ds302_data._bootSlave[nodeid])) {
         
         // am I allowed to start the nodes? 0x1F80 bit 3
         if (0) {
@@ -589,7 +665,10 @@ void _sm_BootSlave_startSlave(CO_Data* d, UNS8 nodeid)
                 masterSendNMTstateChange (d, nodeid, NMT_Start_Node);
 
                 // we're done here
-                SM_ERROR(nodeid, SM_OK);
+                //SM_ERROR(nodeid, SM_OK);
+                DATA_SM(ds302_data._bootSlave[nodeid]).result = SM_OK;
+                STOP_SM(ds302_data._bootSlave[nodeid]);
+                return;
             } else {
                 // no I don't
                 // is my state Operational?
@@ -601,16 +680,25 @@ void _sm_BootSlave_startSlave(CO_Data* d, UNS8 nodeid)
                     masterSendNMTstateChange (d, nodeid, NMT_Start_Node);
         
                     // we're done here
-                    SM_ERROR(nodeid, SM_OK);
+                    //SM_ERROR(nodeid, SM_OK);
+                    DATA_SM(ds302_data._bootSlave[nodeid]).result = SM_OK;
+                    STOP_SM(ds302_data._bootSlave[nodeid]);
+                    return;
                 } else {
                     // nope, we're done here
-                    SM_ERROR(nodeid, SM_OK);
+                    //SM_ERROR(nodeid, SM_OK);
+                    DATA_SM(ds302_data._bootSlave[nodeid]).result = SM_OK;
+                    STOP_SM(ds302_data._bootSlave[nodeid]);
+                    return;
                 }
             }
         } else {
             // nope
             // we're done here
-            SM_ERROR(nodeid, SM_OK);
+            //SM_ERROR(nodeid, SM_OK);
+            DATA_SM(ds302_data._bootSlave[nodeid]).result = SM_OK;
+            STOP_SM(ds302_data._bootSlave[nodeid]);
+            return;
         }
     } else {
 

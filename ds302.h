@@ -253,6 +253,7 @@ typedef enum {
 typedef struct {
     _sm_BootSlave_Codes     result;         // Result of the state machine
     ds302_boot_state_t      state;          // Result of the overall boot process
+    UNS32                   errorCode;      // CAN error code
     
     char                    ViaDPath;       // In case we kept the slave UP during boot, don't reconfigure/start per DS-302
 
