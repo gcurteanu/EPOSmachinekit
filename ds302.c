@@ -797,7 +797,7 @@ void _sm_BootSlave_waitHeartbeat(CO_Data* d, UNS8 nodeid)
     }
     
     // register the alarm for this one for 100ms
-    SetAlarm (d, nodeid, _sm_BootMaster_bootproc, MS_TO_TIMEVAL(500), 0);
+    SetAlarm (d, nodeid, _sm_BootSlave_waitHeartbeat, MS_TO_TIMEVAL(500), 0);
 }
 
 void _sm_BootSlave_startNodeGuard(CO_Data* d, UNS8 nodeid)
@@ -1222,9 +1222,9 @@ void _sm_BootMaster_bootproc (CO_Data* d, UNS32 idx)
         }
     } else {
         // we still have slaves to manage
-        DS302_DEBUG("BM: not all done, waiting 100ms\n");
+        //DS302_DEBUG("BM: not all done, waiting 100ms\n");
         // set alarm for 100ms for this function
-        DS302_DEBUG("_sm_BootMaster_bootproc ALARM SET to %d\n", ++idx);
+        //DS302_DEBUG("_sm_BootMaster_bootproc ALARM SET to %d\n", ++idx);
         SetAlarm (d, idx, _sm_BootMaster_bootproc, MS_TO_TIMEVAL(100), 0);
     }
 }
