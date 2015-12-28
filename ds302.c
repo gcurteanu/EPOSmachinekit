@@ -209,7 +209,7 @@ void _sm_BootSlave_getDeviceType(CO_Data* d, UNS8 nodeid)
     // compare against the expected value in 0x1F84
     
     UNS32   Obj1F84;
-    UNS32   size = sizeof (Obj1F84);
+    size = sizeof (Obj1F84);
     UNS8    dt = 0;
     DATA_SM(ds302_data._bootSlave[nodeid]).errorCode = readLocalDict (d, 0x1F84, nodeid, &Obj1F84, &size, &dt, 0);
     if (DATA_SM(ds302_data._bootSlave[nodeid]).errorCode != OD_SUCCESSFUL) {
@@ -595,7 +595,7 @@ void _sm_BootSlave_verifyConfigurationVersion_1(CO_Data* d, UNS8 nodeid)
     }    
 
     // verify against required data in 0x1F26
-    if (Obj1F26 && &DATA_SM(ds302_data._bootSlave[nodeid]).Index1020_1 != Obj1F26) {                  
+    if (Obj1F26 && DATA_SM(ds302_data._bootSlave[nodeid]).Index1020_1 != Obj1F26) {                  
         // mismatch, go directly to download
         //SM_SWITCH_STATE(SM_BOOTSLAVE_DOWNLOAD_CONFIG,d,nodeid)
         SWITCH_SM (ds302_data._bootSlave[nodeid], SM_BOOTSLAVE_DOWNLOAD_CONFIG, d, nodeid);
@@ -650,7 +650,7 @@ void _sm_BootSlave_verifyConfigurationVersion_2(CO_Data* d, UNS8 nodeid)
     }
         
     // verify against required data in 0x1F27
-    if (Obj1F27 && &DATA_SM(ds302_data._bootSlave[nodeid]).Index1020_2 != Obj1F27) {
+    if (Obj1F27 && DATA_SM(ds302_data._bootSlave[nodeid]).Index1020_2 != Obj1F27) {
         // mismatch, go directly to download
         //SM_SWITCH_STATE(SM_BOOTSLAVE_DOWNLOAD_CONFIG,d,nodeid)
         SWITCH_SM (ds302_data._bootSlave[nodeid], SM_BOOTSLAVE_DOWNLOAD_CONFIG, d, nodeid);
