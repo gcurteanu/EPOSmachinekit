@@ -1423,6 +1423,8 @@ int     ds302_load_dcf_local (CO_Data* d)
         DS302_DEBUG("ConciseDCF for %d: data for 0x1F22 does not include the master (empty data)\n", nodeid);
         return -1;
     }
+
+    DS302_DEBUG("We have data size of %d\n", dcfSize);
         
     // get the DCF count
     UNS32 dcfCount = dcfData[0] | dcfData[1]<<8 | dcfData[2]<<16 | dcfData[3]<<24;
@@ -1439,7 +1441,7 @@ int     ds302_load_dcf_local (CO_Data* d)
         UNS32   value;
         
         // it's the start of a new data item
-        int retcode = ds302_get_next_dcf (dcfData, dcfCursor,
+        int retcode = ds302_get_next_dcf (dcfData, &dcfCursor,
             &idx, &subidx, &size, &value);
                 
         if (retcode < 0) {

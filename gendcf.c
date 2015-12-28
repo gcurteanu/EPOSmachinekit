@@ -34,7 +34,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 #include "gendcf.h"
 
-#define COPEN_DEBUG_RECUP_DICO 1
+//#define COPEN_DEBUG_RECUP_DICO 1
 
 /*
  * Displays the content of the concise DCF array dcfdata
@@ -45,10 +45,12 @@ void dcf_data_display(uint8_t dcfdata[][DCF_MAX_SIZE])
 	uint8_t *pDico;
     uint8_t NodeId;
 	printf("Concise DCF data found in file :\n");
-	for(NodeId = 1 ; NodeId <= DCF_MAX_NODE_ID ; NodeId++) {
+	for(NodeId = 1 ; NodeId <= NMT_MAX_NODE_ID ; NodeId++) {
 	    pDico = dcfdata[NodeId-1];
         NbEntries = pDico[0] | pDico[1]<<8 | pDico[2]<<16 | pDico[3]<<24;
         pDico += 4;
+        if (NbEntries == 0)
+            continue;
         printf("--- Node Id = %u : %u entries\n", NodeId, NbEntries);
         while(NbEntries--) {
             Index = pDico[0] | pDico[1]<<8;
@@ -119,7 +121,7 @@ int dcf_read_in_file(char *fileName, uint8_t dcfdata[][DCF_MAX_SIZE])
 #if COPEN_DEBUG_RECUP_DICO
 			printf("--- Node ID=%u \n",NodeId); 
 #endif
-			if((NodeId > DCF_MAX_NODE_ID) || (NodeId == 0)) {
+			if((NodeId > NMT_MAX_NODE_ID) || (NodeId == 0)) {
                 ret=-2;
                 break;
             }

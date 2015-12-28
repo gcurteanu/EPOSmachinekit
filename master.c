@@ -52,7 +52,7 @@ unsigned int bootup = 1;
 
 unsigned int debug = 0;
 
-UNS8 dcfdatas[DCF_MAX_NODE_ID][DCF_MAX_SIZE];
+UNS8 dcfdatas[NMT_MAX_NODE_ID][DCF_MAX_SIZE];
 
 #define SET_BIT(val, bitIndex) val |= (1 << bitIndex)
 #define CLEAR_BIT(val, bitIndex) val &= ~(1 << bitIndex)
@@ -649,6 +649,15 @@ void setup_dcf(void)
     uint8_t subidx;
     uint8_t nbr_subidx = *(uint8_t *)EPOScontrol_Index1F22[0].pObject;
     printf("setup_dcf : %u sub indexes to set\n", nbr_subidx);
+
+    for (subidx = 0; subidx < nbr_subidx; subidx++) {
+        // zero out the data
+        dcfdatas[subidx][0] = 0x00;
+        dcfdatas[subidx][1] = 0x00;
+        dcfdatas[subidx][2] = 0x00;
+        dcfdatas[subidx][3] = 0x00;
+    }
+
     dcf_read_in_file(DEVICE_DICT_NAME, dcfdatas);
     dcf_data_display(dcfdatas);
     for(subidx = 0 ; subidx < nbr_subidx ; subidx++){
@@ -841,11 +850,13 @@ int main(int argc,char **argv)
 	setup_dcf ();
 
 	// Set the master ID
-	// DO NOT SET THE STUPID MASTER ID, IT WILL REWRITE THE SDOs/PDOs
+	// THE STUPID MASTER ID SET WILL REWRITE THE SDOs/PDOs
 	setNodeId(&EPOScontrol_Data, 0x7F);
-	// actually, there's a bug? in the code. Looks like the dict value is set only AFTER making all the changes???
-	// so execute twice
-	// setNodeId(&EPOScontrol_Data, 0x7F);
+
+    // load the DCF configuration for the master node before starting the timers and such
+    ds302_load_dcf_local (&EPOScontrol_Data);
+
+    exit (0);
 
 #if !defined(WIN32) || defined(__CYGWIN__)
   /* install signal handler for manual break */
