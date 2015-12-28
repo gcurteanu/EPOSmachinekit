@@ -420,6 +420,45 @@ void TestMaster_post_emcy (CO_Data* d, UNS8 nodeID, UNS16 errCode, UNS8 errReg, 
 	for (i=0; i < 5; i++) {
 		eprintf ("\tERRTBL[%d] = %04x\n", i, errSpec[i]);
 	}
+
+    eprintf ("Error register: ");
+    
+    if (errReg & 0x80)
+        eprintf ("M ");
+    else
+        eprintf ("  ");
+    
+    if (errReg & 0x20)
+        eprintf ("D ");
+    else
+        eprintf ("  ");
+    
+    if (errReg & 0x10)
+        eprintf ("C ");
+    else
+        eprintf ("  ");
+    
+    if (errReg & 0x08)
+        eprintf ("T ");
+    else
+        eprintf ("  ");
+
+    if (errReg & 0x04)
+        eprintf ("V ");
+    else
+        eprintf ("  ");
+    
+    if (errReg & 0x02)
+        eprintf ("A ");
+    else
+        eprintf ("  ");
+
+    if (errReg & 0x01)
+        eprintf ("G ");
+    else
+        eprintf ("  ");
+    
+    eprintf ("\n");
 }
 
 /*
