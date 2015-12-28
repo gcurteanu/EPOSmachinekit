@@ -534,7 +534,7 @@ void _sm_BootSlave_verifyConfigurationVersion_2(CO_Data* d, UNS8 nodeid)
     closeSDOtransfer(d, nodeid, SDO_CLIENT);  
 
     // verify against required data in 0x1F27
-    if (0) {                  
+    if (1) {                  
         // mismatch, go directly to download
         //SM_SWITCH_STATE(SM_BOOTSLAVE_DOWNLOAD_CONFIG,d,nodeid)
         SWITCH_SM (ds302_data._bootSlave[nodeid], SM_BOOTSLAVE_DOWNLOAD_CONFIG, d, nodeid);
@@ -571,7 +571,7 @@ void _sm_BootSlave_downloadConfiguration(CO_Data* d, UNS8 nodeid)
         // verify that 1F22 has an entry for me
         if (!(nodeid < Object1F22->bSubCount)) {
             // problem, no data
-            DS302_DEBUG("ConciseDCF for %d: data for 0x1F22 does not include this slave\n", nodeid);
+            DS302_DEBUG("ConciseDCF for %d: data for 0x1F22 does not include this slave (%d subcount)\n", nodeid, Object1F22->bSubCount);
             DATA_SM(ds302_data._bootSlave[nodeid]).result = SM_ErrJ;
             STOP_SM(ds302_data._bootSlave[nodeid]);
             return;
