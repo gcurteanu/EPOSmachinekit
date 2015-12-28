@@ -164,7 +164,7 @@ void _sm_BootSlave_getDeviceType(CO_Data* d, UNS8 nodeid)
     DS302_DEBUG("_sm_BootSlave_getDeviceType (%d)\n", nodeid);
 
     //if (SM_INITIAL(nodeid)) {
-    if (INITIAL_SM(ds302_data._bootSlave[nodeid]))
+    if (INITIAL_SM(ds302_data._bootSlave[nodeid])) {
         DS302_DEBUG("_sm_BootSlave_getDeviceType initial run (%d)\n", nodeid);
 
         // code for the first run only
