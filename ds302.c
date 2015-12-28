@@ -1308,9 +1308,39 @@ void _sm_BootMaster_slavestart (CO_Data* d, UNS32 idx)
 
     DS302_DEBUG("MasterBoot - STOP STATE MACHINE (%d). We completed the boot process\n", idx);
     // should not end up here, but just in case
-    STOP_SM(ds302_data._masterBoot);	
+    STOP_SM(ds302_data._masterBoot);
+    
+    // mark boot completed
+    ds302_data.bootState = BootCompleted;
 }
 
+void ds302_boot_slave (CO_Data* d, UNS8 slaveid)
+{
+    ds302_init_slaveSM (d, slaveid);
+    // mark the machine as used
+    DATA_SM (ds302_data._bootSlave[slaveid]).state = BootInitialised;
+    // mark the start time
+    DATA_SM(ds302_data._bootSlave[slaveid]).bootStart = rtuClock();
+    START_SM(ds302_data._bootSlave[slaveid], d, slaveid);
+}
+
+void ds302_init_slaveSM (CO_Data* d, UNS8 slaveid)
+{
+    // init the slave SM
+    INIT_SM (BOOTSLAVE, ds302_data._bootSlave[slaveid], SM_BOOTSLAVE_INITIAL);
+    // init the slave data
+    DATA_SM (ds302_data._bootSlave[slaveid]).state = BootUnused;
+    DATA_SM (ds302_data._bootSlave[slaveid]).result = SM_Initialised;
+    DATA_SM (ds302_data._bootSlave[slaveid]).ViaDPath = 0;
+    DATA_SM (ds302_data._bootSlave[slaveid]).bootStart = 0;
+    DATA_SM (ds302_data._bootSlave[slaveid]).Index1000 = 0x0;
+    DATA_SM (ds302_data._bootSlave[slaveid]).Index1018_1 = 0x0;
+    DATA_SM (ds302_data._bootSlave[slaveid]).Index1018_2 = 0x0;
+    DATA_SM (ds302_data._bootSlave[slaveid]).Index1018_3 = 0x0;
+    DATA_SM (ds302_data._bootSlave[slaveid]).Index1018_4 = 0x0;
+    DATA_SM (ds302_data._bootSlave[slaveid]).Index1020_1 = 0x0;
+    DATA_SM (ds302_data._bootSlave[slaveid]).Index1020_2 = 0x0;
+}
 
 /* initialises the DS 302 structure */
 void ds302_init (CO_Data* d)
@@ -1343,6 +1373,19 @@ void ds302_init (CO_Data* d)
     // we can WAIT for a boot message before starting the boot process for example
     // in order to ensure the slave is ready to process commands
     
+}
+
+void ds302_start (CO_Data* d)
+{
+    ds302_data.bootState = BootRunning;
+    
+    // start the boot with a idx above the CAN IDs
+    START_SM(ds302_data._masterBoot, d, NMT_MAX_NODE_ID);
+}
+
+ds302_boot_state_t  ds302_status (CO_Data* d)
+{
+    return ds302_data.bootState;
 }
 
 /*

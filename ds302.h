@@ -299,6 +299,12 @@ extern ds302_t     ds302_data;
 void    ds302_init (CO_Data*);
 /* starts the DS-302 boot */
 void    ds302_start (CO_Data *);
+/* get the state of the boot */
+ds302_boot_state_t  ds302_status (CO_Data*);
+/* init the boot for a slave */
+void ds302_init_slaveSM (CO_Data*, UNS8);
+/* boot a slave */
+void ds302_boot_slave (CO_Data*, UNS8);
 /* Gets the DS-302 boot status */
 ds302_boot_state_t   ds302_status (CO_Data *);
 

@@ -394,6 +394,12 @@ void TestMaster_post_SlaveBootup(CO_Data* d, UNS8 SlaveID) {
 		check_and_start_node(d, SlaveID);
 	}
 */
+
+    if (ds302_status(d) == BootCompleted) {
+        // a post-boot slave came up. Well, configure it if able?
+        
+        ds302_boot_slave (d, SlaveID);
+    }
 }
 
 void TestMaster_post_SlaveStateChange(CO_Data* d, UNS8 nodeId, e_nodeState newNodeState)
@@ -915,9 +921,11 @@ int main(int argc,char **argv)
 	EPOScontrol_Data.preOperational = TestMaster_preOperational;
 	EPOScontrol_Data.operational = TestMaster_operational;
 	EPOScontrol_Data.stopped = TestMaster_stopped;
+	EPOScontrol_Data.post_TPDO = TestMaster_post_TPDO;
 	// SYNC
 	EPOScontrol_Data.post_sync = TestMaster_post_sync;
-	EPOScontrol_Data.post_TPDO = TestMaster_post_TPDO;
+    
+    // The error control routines only get into action after the ds302 boot
 	EPOScontrol_Data.post_SlaveBootup = TestMaster_post_SlaveBootup;
 	EPOScontrol_Data.post_SlaveStateChange = TestMaster_post_SlaveStateChange;
 	// EMCY
@@ -949,11 +957,10 @@ int main(int argc,char **argv)
 	//INIT_SM(BOOTMASTER,_masterBoot,MB_INITIAL);
 
     ds302_init (&EPOScontrol_Data);
-    
     ds302_setHeartbeat (&EPOScontrol_Data, 0x01, 1000);
 
 	EnterMutex();
-	START_SM(ds302_data._masterBoot, &EPOScontrol_Data, 0);
+	ds302_start (&EPOScontrol_Data);
 	LeaveMutex();
 
 	// timer play
