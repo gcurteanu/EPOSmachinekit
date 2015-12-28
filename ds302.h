@@ -269,6 +269,8 @@ typedef struct {
 
     uint64_t                bootStart;      // timestamp of the boot process start
     
+    uint64_t                ecsStart;       // timestamp of the Error Control Service start for HB checks
+    
     // DCF
     UNS32                   dcfCursor;      // DCF cursor for the SDO loads
     UNS8                    *dcfData;       // DCF data for the node
