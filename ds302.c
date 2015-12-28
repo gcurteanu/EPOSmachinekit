@@ -50,8 +50,7 @@ INIT_SM_TYPE(BOOTSLAVE,_sm_BootSlave_States,SDOCallback_t,
     _sm_BootSlave_waitHeartbeat,
     _sm_BootSlave_startNodeGuard,
     _sm_BootSlave_errorControlStarted,
-    _sm_BootSlave_startSlave,
-);
+    _sm_BootSlave_startSlave);
 
 // declare the master ds302_data structure
 ds302_t     ds302_data;
