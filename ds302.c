@@ -666,6 +666,11 @@ void _sm_BootSlave_downloadConfiguration(CO_Data* d, UNS8 nodeid)
             
             // at this point we sent it
             // we let the loop run, should end up on "else" and get a IN PROGRESS and return waiting for complete on callback
+
+            DS302_DEBUG("ConciseDCF for %d: started load of next item. Did %d, have %d\n", nodeid,
+                DATA_SM(ds302_data._bootSlave[nodeid]).dcfLoadCount,
+                DATA_SM(ds302_data._bootSlave[nodeid]).dcfCount,
+                );
             
         } else {
             // it's the continuation of a previous data item
@@ -690,6 +695,12 @@ void _sm_BootSlave_downloadConfiguration(CO_Data* d, UNS8 nodeid)
             DATA_SM(ds302_data._bootSlave[nodeid]).dcfState = 0;
             // also increment the load count
             DATA_SM(ds302_data._bootSlave[nodeid]).dcfLoadCount++;
+
+            DS302_DEBUG("ConciseDCF for %d: completed load of item %d. Have %d\n", nodeid,
+                DATA_SM(ds302_data._bootSlave[nodeid]).dcfLoadCount,
+                DATA_SM(ds302_data._bootSlave[nodeid]).dcfCount,
+                );
+                    
         }
     }
     
