@@ -1388,3 +1388,86 @@ int     ds302_get_next_dcf (UNS8 *data, UNS32 *cursor, UNS16 *idx, UNS8 *subidx,
     
     return 1;
 }
+
+/*
+    Loads the DCF data for the local node
+*/
+int     ds302_load_dcf_local (CO_Data* d)
+{
+    const indextable *	Object1F22;
+    UNS32               errorCode;
+    UNS8                nodeid = getNodeId(d);
+
+    Object1F22 = (*d->scanIndexOD)(d, 0x1F22, &errorCode);
+    if (errorCode != OD_SUCCESSFUL) {
+        DS302_DEBUG("ConciseDCF for %d: can not get data for 0x1F22\n", nodeid);
+        return -1;
+    }
+
+    // verify that 1F22 has an entry for me
+    if (!(nodeid < Object1F22->bSubCount)) {
+        // problem, no data
+        DS302_DEBUG("ConciseDCF for %d: data for 0x1F22 does not include the master (%d subcount)\n", nodeid, Object1F22->bSubCount);
+        return -1;
+    }
+        
+    // get the raw data
+    UNS8* dcfData = Object1F22->pSubindex[nodeid].pObject;
+    UNS32 dcfSize = Object1F22->pSubindex[nodeid].size;
+    UNS32 dcfCursor = 4; // see below why 4
+        
+    // why 4? Because DCF data is UNS32 number of entries and then idx/subidx/datasize/data ... 4 means we have at least the size
+    if (dcfData == NULL || dcfSize < 4) {
+        // problem, empty data
+        // is this a problem? Not having DCF data? Maybe we don't want to configure this slave?
+        DS302_DEBUG("ConciseDCF for %d: data for 0x1F22 does not include the master (empty data)\n", nodeid);
+        return -1;
+    }
+        
+    // get the DCF count
+    UNS32 dcfCount = dcfData[0] | dcfData[1]<<8 | dcfData[2]<<16 | dcfData[3]<<24;
+    UNS32 dcfLoadCount = 0;
+    
+    DS302_DEBUG("ConciseDCF for %d: initialised OK with %d entries to load\n", nodeid, dcfCount);
+
+
+    while (dcfCount > dcfLoadCount) {
+        
+        UNS16   idx;
+        UNS8    subidx;
+        UNS32   size;
+        UNS32   value;
+        
+        // it's the start of a new data item
+        int retcode = ds302_get_next_dcf (dcfData, dcfCursor,
+            &idx, &subidx, &size, &value);
+                
+        if (retcode < 0) {
+            // error, bug off
+            DS302_DEBUG("ConciseDCF for %d: GOT DCF ERROR. Had %d, did %d\n", nodeid, dcfCount, dcfLoadCount);
+            return -1;
+        } else if (retcode == 0) {
+            // EOS
+            // Odd, we hit EOS before the stated number of items
+            DS302_DEBUG("ConciseDCF for %d: apparently, we SHORT LOADED. Got EOS. Had %d, did %d\n", nodeid, dcfCount, dcfLoadCount);
+            return -1;
+        }
+            
+        // at this point I have the data, so I can proceed
+        errorCode = writeLocalDict (d,
+            idx, subidx, 
+            &value, &size,
+            0 
+            );
+            
+        if (errorCode != OD_SUCCESSFUL) {
+            // hit a send error
+            DS302_DEBUG("ConciseDCF for %d: GOT DCF DICT WRITE ERROR. Had %d, did %d\n", nodeid, dcfCount, dcfLoadCount);
+            return -1;
+        }
+        
+        dcfLoadCount++;
+    }
+    
+    return dcfLoadCount;
+}

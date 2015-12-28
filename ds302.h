@@ -305,3 +305,5 @@ ds302_boot_state_t   ds302_status (CO_Data *);
 
 /* DCF data defines/routines */
 int     ds302_get_next_dcf (UNS8 *data, UNS32 *cursor, UNS16 *idx, UNS8 *subidx, UNS32 *size, UNS32 *value);
+/* Loads the DCF data in the local dict for the master nodeid */
+int     ds302_load_dcf_local (CO_Data*);
