@@ -782,8 +782,14 @@ void _sm_BootSlave_waitHeartbeat(CO_Data* d, UNS8 nodeid)
     }
     
     e_nodeState slavestate = getNodeState (d, nodeid);
-    DS302_DEBUG("Node state for slave %d is %x\n", nodeid, slavestate);
-        
+
+    if (slavestate != Initialisation && slavestate != Unknown_state) {
+        // means we have a heartbeat here
+        DS302_DEBUG("Node state for slave %d is %x. We have a heartbeat\n", nodeid, slavestate);
+        SWITCH_SM (ds302_data._bootSlave[nodeid], SM_BOOTSLAVE_ERRCTL_STARTED, d, nodeid);
+        return;
+    }
+    
     // check if time elapsed
     uint64_t    elapsedTime = rtuClock() - DATA_SM (ds302_data._bootSlave[nodeid]).ecsStart;
     // need to update to the proper value
