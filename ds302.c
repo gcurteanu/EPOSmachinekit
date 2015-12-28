@@ -772,10 +772,32 @@ void _sm_BootSlave_waitHeartbeat(CO_Data* d, UNS8 nodeid)
     DS302_DEBUG("_sm_BootSlave_waitHeartbeat\n");
     // dummy for now
     if (INITIAL_SM(ds302_data._bootSlave[nodeid])) {
+        
+        // register the start here. We are going to wait
+        DATA_SM(ds302_data._bootSlave[nodeid]).ecsStart = rtuClock();
+        
         //SM_SWITCH_STATE(SM_BOOTSLAVE_ERRCTL_STARTED,d,nodeid)
-        SWITCH_SM (ds302_data._bootSlave[nodeid], SM_BOOTSLAVE_ERRCTL_STARTED, d, nodeid);
-        return;
+        //SWITCH_SM (ds302_data._bootSlave[nodeid], SM_BOOTSLAVE_ERRCTL_STARTED, d, nodeid);
+        //return;
     }
+    
+    e_nodeState slavestate = getNodeState (d, nodeid);
+    DS302_DEBUG("Node state for slave %d is %x\n", nodeid, slavestate);
+        
+    // check if time elapsed
+    uint64_t    elapsedTime = rtuClock() - DATA_SM (ds302_data._bootSlave[slaveid]).ecsStart;
+    // need to update to the proper value
+    if (elapsedTime > 2*1000*1000) {
+        // allow for the HB time to see a change
+        
+        DS302_DEBUG("HB wait time for %d elapsed (%d), we have a problem\n", nodeid, elapsedTime);
+        DATA_SM(ds302_data._bootSlave[nodeid]).result = SM_ErrK;
+        STOP_SM(ds302_data._bootSlave[nodeid]);
+        return;        
+    }
+    
+    // register the alarm for this one for 100ms
+    SetAlarm (d, nodeid, _sm_BootMaster_bootproc, MS_TO_TIMEVAL(500), 0);
 }
 
 void _sm_BootSlave_startNodeGuard(CO_Data* d, UNS8 nodeid)
