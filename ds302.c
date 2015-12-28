@@ -724,9 +724,14 @@ void _sm_BootSlave_startErrorControlService(CO_Data* d, UNS8 nodeid)
     DS302_DEBUG("_sm_BootSlave_startErrorControlService\n");
     if (INITIAL_SM(ds302_data._bootSlave[nodeid])) {      
         // code for the first run only
-
+    
+        // display node state for fun
+        e_nodeState slavestate = getNodeState (d, nodeid);
+        DS302_DEBUG("Node state for slave %d is %x\n", nodeid, slavestate);
+        
         // is the heartbeat consumer non-zero for this node
-        if (0) {
+        if (1) {
+            
             // non-zero consumer, use HB
             //SM_SWITCH_STATE(SM_BOOTSLAVE_WAIT_HB,d,nodeid)
             SWITCH_SM (ds302_data._bootSlave[nodeid], SM_BOOTSLAVE_WAIT_HB, d, nodeid);
