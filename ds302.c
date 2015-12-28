@@ -32,7 +32,7 @@ INIT_SM_TYPE(BOOTMASTER,_sm_BootMaster_States,TimerCallback_t,
     _sm_BootMaster_operwait,
     _sm_BootMaster_slavestart);
 
-DECLARE_SM(BOOTMASTER, _masterBoot);
+//DECLARE_SM(BOOTMASTER, _masterBoot);
 
 INIT_SM_TYPE(BOOTSLAVE,_sm_BootSlave_States,SDOCallback_t,
     _sm_BootSlave_initial,
@@ -54,13 +54,6 @@ INIT_SM_TYPE(BOOTSLAVE,_sm_BootSlave_States,SDOCallback_t,
 
 // declare the master ds302_data structure
 ds302_t     ds302_data;
-
-
-void test() {
-DECLARE_SM(BOOTMASTER,myMachine);
-INIT_SM(BOOTMASTER,myMachine,0);
-RUN_SM(myMachine, NULL, 0);
-}
 
 // 0x1F80 bits
 #define DS302_DEVICE_NMT_MASTER         0x01    // is the device the NMT master
@@ -85,7 +78,7 @@ RUN_SM(myMachine, NULL, 0);
 #define DS302_NL_GUARD_TIME(a)          (((a) >> 16) & 0xFFFF)
 
 // holds the boot signals
-ds302_boot_state_t ds302_boot_data[NMT_MAX_NODE_ID];
+// ds302_boot_state_t ds302_boot_data[NMT_MAX_NODE_ID];
 
 // move to a pointer based state machine, using functions that are also callback capable for SDOs
 // type for functions is SDOCallback_t
@@ -94,6 +87,7 @@ ds302_boot_state_t ds302_boot_data[NMT_MAX_NODE_ID];
  BootSlave state machine
 */
 
+/* Commented, moving to the ds302_data structure
 SDOCallback_t const _sm_BootSlave_StateTable[ SM_BOOTSLAVE_NUM_STATES ] = {
     _sm_BootSlave_initial,
     _sm_BootSlave_getDeviceType,
@@ -115,7 +109,7 @@ SDOCallback_t const _sm_BootSlave_StateTable[ SM_BOOTSLAVE_NUM_STATES ] = {
 
 // holds the state machines for each slave boot process
 _sm_BootSlave ds302_slaveBootSM[NMT_MAX_NODE_ID];
-
+*/
 
 const char* _sm_BootSlave_CodeToText[] = {
     "OK: finished OK",
@@ -137,206 +131,10 @@ const char* _sm_BootSlave_CodeToText[] = {
     "O: serial number (0x1018) did not match expected",
 };
 
-
-/*
-  Does the initialisation part of DS 302
-*/
-void ds302_preOperational_preBoot (CO_Data* d)
-{
-    /* dummy vars pending real structures */
-    int	lssrequired = 0;
-
-    eprintf ("ds302_preOperational_preBoot ENTRY\n");
-
-    /* initialize data structures */
-    int	i;
-
-    // initialize the boot state machines	
-    for (i = 0; i < NMT_MAX_NODE_ID; i++)
-        SM_INIT (i);
-
-    // initialize the boot signals
-    for (i = 0; i < NMT_MAX_NODE_ID; i++)
-        ds302_boot_data[i] = BootInitialised;
-
-    if (ds302_bitcheck_32(d, 0x1F80, 0x00, DS302_DEVICE_NMT_MASTER) != 1) {
-        // enter slave state
-        DS302_DEBUG("I am not a master, so not booting\n");
-        // not needed
-        return;
-    }
-
-    if (lssrequired)
-        // no LSS support for now
-        return;
-
-    if (ds302_nl_keepalive_nodes_present(d)) {
-
-        DS302_DEBUG("Keep alive some, send Reset Comm\n");
-        // send NMT_Reset_Comms to the nodes where keepalive not set
-        ds302_nl_send_reset_to_non_keepalive(d);
-
-    } else {
-
-        DS302_DEBUG("Broadcast, send Reset Comm\n");
-        // send a broadcast NMT_Reset_Comms
-        masterSendNMTstateChange (d, 0, NMT_Reset_Comunication);
-    }
-
-    eprintf ("ds302_preOperational_preBoot DONE\n");
-}
-
-/*
-  does the DS 302 after the boot slave process finished
-*/
-void ds302_preOperational_postBoot (CO_Data* d)
-{
-    int	startallslaves = 1;
-
-    // boot process
-
-    eprintf ("ds302_preOperational_postBoot ENTRY\n");
-
-    if (ds302_all_mandatory_booted(d) != 1)
-    {
-        DS302_DEBUG("Not all mandatory slaves booted!\n");
-        return;
-    }
-
-    if (ds302_bitcheck_32(d, 0x1F80, 0x00, DS302_DEVICE_MANUAL_OPERATIONAL) == 0) {
-
-        DS302_DEBUG("Entering operational\n");
-        setState(d, Operational);
-    } else {
-        
-        DS302_DEBUG("Waiting to be put into operational\n");
-        // wait in loop to be operational ???
-        // there has to be a better way
-        while (getState(d) != Operational)
-            sleep (1);
-
-        DS302_DEBUG("Was put into operational mode\n");
-    }
-
-    // Only execute this when I am operational
-    // this enables multiple executions for this function
-    if ((ds302_bitcheck_32(d, 0x1F80, 0x00, DS302_DEVICE_MANUAL_START_SLAVE) == 0) && getState(d) == Operational) {
-
-        DS302_DEBUG("Start slaves once operational\n");
-
-        // decide on broadcast or individual based on DS302_DEVICE_START_ALL_SLAVES
-
-        if (ds302_bitcheck_32(d, 0x1F80, 0x00, DS302_DEVICE_MANUAL_START_SLAVE) == 1) {
-            DS302_DEBUG("Start slaves with a broadcast\n");
-            masterSendNMTstateChange (d, 0, NMT_Start_Node);
-        } else {
-            DS302_DEBUG("Start slaves individually\n");
-            //start slaves individually
-            int slaveid;
-            int myid = getNodeId(d);
-            for (slaveid=1; slaveid < NMT_MAX_NODE_ID; slaveid++) {
-                // make sure to skip myself
-                if ((slaveid != myid) && ds302_nl_node_in_list(d, slaveid))
-                    masterSendNMTstateChange (d, slaveid, NMT_Start_Node);
-            }
-        }
-    }
-
-    // boot up done
-
-    eprintf ("ds302_preOperational_postBoot DONE\n");
-}
-
 static int sleep_ms ( unsigned long ms )
 {
     if ( ms >= 1000 ) ms = 1000;
     return usleep ( ms * 1000 );
-}
-
-void ds302_slaveBootprocess (CO_Data* d)
-{
-    // bit tricky. Will have to do this on parallel threads?
-    // 
-
-    eprintf ("ds302_slaveBootprocess ENTRY\n");
-
-    int optionalslave = 0;
-    int nodeismandatory = 1;
-    int bootexpired = 1;
-
-    // start boot one slave in sequence
-    // for slave in list...
-
-    // for now, we only do slave 0x01
-
-    _sm_BootSlave_Codes	result;
-
-    // we can leverage the bootup callback here!
-    while (1) {
-
-        // run the state machine until DONE
-
-        DS302_DEBUG("Run state machine for 0x01\n");
-        eprintf ("SM for 0x01 is: %d %d %d\n", ds302_slaveBootSM[0x01].machine_state, ds302_slaveBootSM[0x01].current_state,  ds302_slaveBootSM[0x01].step_iter);
-
-        // run the machine ONCE, since once triggered relies on callbacks
-        //EnterMutex();
-        SM_RUN_MACHINE(d, 0x01);
-        //LeaveMutex();
-
-        while (!SM_IS_FINISHED(0x01)) {
-            // sleep 100ms
-            sleep_ms (100);	
-        }
-        eprintf ("SM for 0x01 is: %d %d %d\n", ds302_slaveBootSM[0x01].machine_state, ds302_slaveBootSM[0x01].current_state,  ds302_slaveBootSM[0x01].step_iter);
-
-        // machine finished
-        
-        eprintf ("Machine for node ID 0x01 finished. %d, %s\n", SM_DATA(0x01,machine_state), SM_ERR_MSG(SM_DATA(0x01,machine_state)));
-
-        result = SM_DATA(0x01,machine_state);
-
-        // signal on optional slave
-        if (optionalslave)
-            ds302_boot_data[0x01] = BootAttempted;
-
-        if (result == SM_ErrB) {
-            DS302_DEBUG("Result is B,  waiting\n");
-            if (nodeismandatory && bootexpired) { 
-                // inform application
-                eprintf ("Can't start node 0x01 and it's mandatory\n");
-                DS302_DEBUG("Boot expired for mandatory\n");
-                break;
-            } else {
-                DS302_DEBUG("Sleeping for 1 second to retry\n");
-                // sleep 1 second
-                sleep (1);
-            }
-
-        } else if (result != SM_OK) {
-            DS302_DEBUG("Result is NOT OK, BootTImedOut, exiting loop\n");
-            // inform application
-            eprintf ("Node start for 0x01 returned %d\n", result);
-            // signal boot failed
-            ds302_boot_data[0x01] = BootTimedOut;
-            break;
-        } else {
-            DS302_DEBUG("Result is OK, BootCompleted, exiting loop\n");
-            // everything is fine, exit loop
-            // signal completed ok
-            ds302_boot_data[0x01] = BootCompleted;
-            break;
-        }
-
-    }
-
-    DS302_DEBUG("Boot process done, checking slave statuses\n");
-    while (ds302_boot_data[0x01] == BootInitialised) {
-        // in this case we should WAIT until something DID happen with the node
-        sleep (1);
-    }
-
-    eprintf ("ds302_slaveBootprocess DONE\n");
 }
 
 void _sm_BootSlave_initial(CO_Data* d, UNS8 nodeid)
@@ -969,49 +767,50 @@ void _sm_BootMaster_initial (CO_Data* d, UNS32 idx)
 {
     eprintf ("_sm_BootMaster_initial ENTRY\n");
 
-    if (INITIAL_SM(_masterBoot)) {
+    if (INITIAL_SM(ds302_data._masterBoot)) {
 
-            /* initialize data structures */
-            int     i;
+        // no longer doing data init
+        /* initialize data structures */
+        //int     i;
 
-            // initialize the boot state machines   
-            for (i = 0; i < NMT_MAX_NODE_ID; i++)
-                    SM_INIT (i);
-        
-            // initialize the boot signals
-            for (i = 0; i < NMT_MAX_NODE_ID; i++)
-                    ds302_boot_data[i] = BootInitialised;
+        // initialize the boot state machines   
+        /*for (i = 0; i < NMT_MAX_NODE_ID; i++)
+                SM_INIT (i);*/
+    
+        // initialize the boot signals
+        /*for (i = 0; i < NMT_MAX_NODE_ID; i++)
+                ds302_boot_data[i] = BootInitialised;*/
 
-            if (ds302_bitcheck_32(d, 0x1F80, 0x00, DS302_DEVICE_NMT_MASTER) != 1) {
-                    // enter slave state
-                    DS302_DEBUG("I am not a master, so not booting\n");
-                    // not needed, stop the boot machine
-            STOP_SM(_masterBoot);
-                    return;
-            }
+        if (ds302_bitcheck_32(d, 0x1F80, 0x00, DS302_DEVICE_NMT_MASTER) != 1) {
+            // enter slave state
+            DS302_DEBUG("I am not a master, so not booting\n");
+            // not needed, stop the boot machine
+            STOP_SM(ds302_data._masterBoot);
+            return;
+        }
 
 
-            if (ds302_nl_keepalive_nodes_present(d)) {
+        if (ds302_nl_keepalive_nodes_present(d)) {
 
-                    DS302_DEBUG("Keep alive some, send Reset Comm\n");
-                    // send NMT_Reset_Comms to the nodes where keepalive not set
-                    ds302_nl_send_reset_to_non_keepalive(d);
+            DS302_DEBUG("Keep alive some, send Reset Comm\n");
+            // send NMT_Reset_Comms to the nodes where keepalive not set
+            ds302_nl_send_reset_to_non_keepalive(d);
 
-            } else {
+        } else {
 
-                    DS302_DEBUG("Broadcast, send Reset Comm\n");
-                    // send a broadcast NMT_Reset_Comms
-                    masterSendNMTstateChange (d, 0, NMT_Reset_Comunication);
-            }
+            DS302_DEBUG("Broadcast, send Reset Comm\n");
+            // send a broadcast NMT_Reset_Comms
+            masterSendNMTstateChange (d, 0, NMT_Reset_Comunication);
+        }
     }
 
-    // go to the boot process
+    // go straight to the boot process, always
     SWITCH_SM(_masterBoot, MB_BOOTPROC, d, idx);
 }
 
 void _sm_BootMaster_bootproc (CO_Data* d, UNS32 idx)
 {
-    int	i;
+    int	slaveid;
 
     eprintf ("_sm_BootMaster_bootproc ENTRY (%d)\n", idx);
 
@@ -1021,121 +820,141 @@ void _sm_BootMaster_bootproc (CO_Data* d, UNS32 idx)
     // verify if we are done here
     if (ds302_all_mandatory_booted(d)) {
         // switch to the next step
-        SWITCH_SM(_masterBoot, MB_OPERWAIT, d, idx);
+        SWITCH_SM(ds302_data._masterBoot, MB_OPERWAIT, d, idx);
         return;
     }
 
     // if we are not yet done, process the state machines
-    if (INITIAL_SM(_masterBoot)) {
+    if (INITIAL_SM(ds302_data._masterBoot)) {
 
         // this is the first run, so start all the state machines for the slaves in the network list
         eprintf ("_sm_BootMaster_bootproc INITIAL\n");
 
-        for (i=1; i<NMT_MAX_NODE_ID; i++)
-            if (ds302_nl_node_in_list(d, i)) {
+        for (i=slaveid; i<NMT_MAX_NODE_ID; i++)
+            if (ds302_nl_node_in_list(d, slaveid)) {
                 // it's a slave, so start it's machine
+                
+                // mark the machine as used
+                DATA_SM (ds302_data._bootSlave[slaveid]).state = BootInitialised;
+                
                 // mark the start time
-                SM_DATA(i,start_time) = rtuClock();
+                //SM_DATA(i,start_time) = rtuClock();
+                DATA_SM(ds302_data._bootSlave[slaveid]).start_time = rtuClock();
+                
                 //EnterMutex();
-                SM_RUN_MACHINE(d, i);
+                //SM_RUN_MACHINE(d, i);
+                START_SM(ds302_data._bootSlave[slaveid]);
                 //LeaveMutex();
             } else {
+                
+                // it's unused based on state, BootUnused.
+                
                 // zero out the start time to indicate unused
-                SM_DATA(i,start_time) = 0;
+                //SM_DATA(i,start_time) = 0;
             }
         // at this point we're done here
     } 
-        
 
     // additional calls
     eprintf ("_sm_BootMaster_bootproc N+1\n");
 
     // process the entire state machine list, until all are done
     // if all are done, re-do the mandatory check and switch, or RAISE HELL (all machines done but NO JOY on mandatory)
-    int	alldone = 1;
-    for (i=1; i<NMT_MAX_NODE_ID; i++) {
-        if(!SM_IS_FINISHED(i)) {
-            // machine still runs, or it's not used
-            // check if used. Rely on the start time
-            if (SM_DATA(i,start_time) == 0) {
-                // unused machine, skip
+    int	all_slaves_booted = 1;
+    
+    for (slaveid=1; slaveid<NMT_MAX_NODE_ID; slaveid++) {
+        if (DATA_SM (ds302_data._bootSlave[slaveid]).state != BootUnused)
+        {
+            // machine is in use, so work it
+            if (RUNNING_SM(ds302_data._bootSlave[slaveid])) {
+                // machine still running, skip it
+                DS302_DEBUG("Slave boot %d still running\n");
+                all_slaves_booted = 0;
                 continue;
+            }
+            
+            // at this point we found a used SM that is no longer running
+            if (!STOPPED_SM(ds302_data._bootSlave[slaveid])) {
+                // small sanity checking, it SHOULD be stopped
+                DS302_DEBUG ("Found a used SM not running and NOT stopped, %d", slaveid);
+            }
+            
+            // we're sure the machine finished running
+            
+            DS302_DEBUG("Slave boot %d finished\n");
+            
+            _sm_BootSlave_Codes     result = DATA_SM(ds302_data._bootSlave[slaveid]).result;
+            
+            //if not mandatory slave, signal boot attempted
+            if (!ds302_nl_mandatory_node(d, slaveid)) {
+                DATA_SM (ds302_data._bootSlave[slaveid]).state = BootAttempted;
+            }
+            
+            if (result == SM_ErrB) {
+                // get current time
+                uint64_t		elapsedTime = rtuClock() - DATA_SM (ds302_data._bootSlave[slaveid]).start_time;
+                
+                DS302_DEBUG ("Got status B for SM %d, elapsed time %d\n", i, elapsedTime);
+                
+                // check if it's mandatory
+                if (ds302_nl_mandatory_node(d, slaveid)) {
+                    if (elapsedTime > bootTime) {
+                        // boot expired for this
+                        DS302_DEBUG("Boot expired for mandatory slave %d (time %d)\n", slaveid, elapsedTime);
+                        // signal result
+                        DATA_SM (ds302_data._bootSlave[slaveid]).state = BootTimedOut;
+                        continue;
+                        
+                    } else {
+                        // re-initialize the state machine
+                        
+                        DS302_DEBUG("Boot time not expired for slave %d, rescheduling\n", slaveid);
+                        INIT_SM (ds302_data._bootSlave[slaveid]);
+                        START_SM (ds302_data._bootSlave[slaveid]);
+                        
+                        // mark that we're not done yet
+                        all_slaves_booted = 0;
+                        continue;
+                    }
+                } else {
+                    // regular slave that finished. What do I do here???
+                    DS302_DEBUG("Optional slave %d ended with status B. Now what?", slaveid);
+                }
+            } else if (result != SM_OK) {
+                // we ended with a boot error and it wasn't B
+                DS302_DEBUG("Result is NOT OK, BootTimedOut for %d <|==\n", slaveid);
+                // signal state
+                DATA_SM (ds302_data._bootSlave[slaveid]).state = BootError;
             } else {
-                DS302_DEBUG("BM: %d is still running\n", i);
-                // machine is in use and it is not finished yet
-                // however, machines run independently at this point, so we just mark that NOT all done
-                alldone = 0;
+                // we ended with a successfull run
+                DS302_DEBUG("Result is OK, BootCompleted for %d <---\n", i);
+                // signal state
+                DATA_SM (ds302_data._bootSlave[slaveid]).state = BootCompleted;
             }
         } else {
-
-            DS302_DEBUG("BM: %d is finished\n", i);
-            // SM finished
-            // do the process
-            _sm_BootSlave_Codes     result = SM_DATA(i,machine_state);
-
-            //if not mandatory slave, signal boot attempted
-            if (!ds302_nl_mandatory_node(d, i)) {
-                ds302_boot_data[i] = BootAttempted;
-            }
-
-
-                    if (result == SM_ErrB) {
-                uint64_t		elapsedTime = rtuClock() - SM_DATA(i,start_time);
-
-                DS302_DEBUG ("Got status B for SM %d, elapsed time %d\n", i, elapsedTime);
-                // if it's mandatory, check 
-                            if (ds302_nl_mandatory_node(d, i))
-                    if (elapsedTime > 10*1000000) {
-                                        // timed out, inform application
-                                        eprintf ("Can't start node %d and it's mandatory. Elapsed %d trying to start it\n", i, elapsedTime);
-                                        DS302_DEBUG("Boot expired for mandatory %d\n", i);
-                                } else {
-                                        DS302_DEBUG("Rescheduling %d (I should wait 1 second here)\n", i);
-                                        // sleep 1 second
-                        // restart machine
-                                        SM_INIT(i);
-                        //EnterMutex();
-                                        SM_RUN_MACHINE(d, i);
-                                        //LeaveMutex();
-                        
-                        // we are not yet done
-                        alldone = 0;
-                                }
-
-                    } else if (result != SM_OK) {
-                            DS302_DEBUG("Result is NOT OK, BootTimedOut for %d <|==\n", i);
-                            // inform application
-                            eprintf ("Node start for %d returned %d\n", i, result);
-                            // signal boot failed
-                            ds302_boot_data[i] = BootTimedOut;
-                    } else {
-                            DS302_DEBUG("Result is OK, BootCompleted for %d <---\n", i);
-                            // everything is fine, exit loop
-                            // signal completed ok
-                            ds302_boot_data[i] = BootCompleted;
-                    }
-            
+            // unused machine, skip
+            continue;
         }
     }
 
 
-    if (alldone) {
+    if (all_slaves_booted) {
+        // all the slaves have completed boot
         // re-verify if we are done here
-            if (ds302_all_mandatory_booted(d)) {
-                    // switch to the next step
-                    SWITCH_SM(_masterBoot, MB_OPERWAIT, d, idx);
+        if (ds302_all_mandatory_booted(d)) {
+            // switch to the next step
+            SWITCH_SM(ds302_data._masterBoot, MB_OPERWAIT, d, idx);
             return;
-            } else {
-
+        } else {
+            // well, crap
             DS302_DEBUG ("ALL DONE BUT NOT FINISHED!!!\n");
-            STOP_SM(_masterBoot);
+            STOP_SM(ds302_data._masterBoot);
             return;
         }
     } else {
-
+        // we still have slaves to manage
         DS302_DEBUG("BM: not all done, waiting 100ms\n");
         // set alarm for 100ms for this function
-
         DS302_DEBUG("_sm_BootMaster_bootproc ALARM SET to %d\n", ++idx);
         SetAlarm (d, idx, _sm_BootMaster_bootproc, MS_TO_TIMEVAL(100), 0);
     }
@@ -1145,10 +964,10 @@ void _sm_BootMaster_operwait (CO_Data* d, UNS32 idx)
 {
     DS302_DEBUG ("_sm_BootMaster_operwait ENTRY (%d)\n", idx);
 
-    if (INITIAL_SM(_masterBoot)) {
+    if (INITIAL_SM(ds302_data._masterBoot)) {
         if (!ds302_all_mandatory_booted(d)) {
             eprintf ("We should not be here, but here we are! Not ALL mandatory booted OK\n");
-            STOP_SM(_masterBoot);
+            STOP_SM(ds302_data._masterBoot);
             return;
         }
 
@@ -1160,7 +979,7 @@ void _sm_BootMaster_operwait (CO_Data* d, UNS32 idx)
             setState(d, Operational);
 
             // switch to start slaves
-            SWITCH_SM(_masterBoot, MB_SLAVESTART, d, idx);
+            SWITCH_SM(ds302_data._masterBoot, MB_SLAVESTART, d, idx);
             return;
         }
     }
@@ -1184,7 +1003,7 @@ void _sm_BootMaster_slavestart (CO_Data* d, UNS32 idx)
 {
     DS302_DEBUG ("_sm_BootMaster_slavestart ENTRY (%d)\n", idx);
 
-        if (INITIAL_SM(_masterBoot)) {
+        if (INITIAL_SM(ds302_data._masterBoot)) {
 
             // Only execute this when I am operational
             // this enables multiple executions for this function
@@ -1211,9 +1030,9 @@ void _sm_BootMaster_slavestart (CO_Data* d, UNS32 idx)
             }
     }
 
-    DS302_DEBUG("MasterBoot - STOP STATE MACHINE (%d)\n", idx);
+    DS302_DEBUG("MasterBoot - STOP STATE MACHINE (%d). We completed the boot process\n", idx);
     // should not end up here, but just in case
-    STOP_SM(_masterBoot);	
+    STOP_SM(ds302_data._masterBoot);	
 }
 
 

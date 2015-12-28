@@ -267,6 +267,11 @@ typedef struct {
     UNS32                   Index1020_2;    // Configuration time. 0x0000 means don't care
 
     uint64_t                bootStart;      // timestamp of the boot process start
+    
+    // DCF
+    UNS32                   dcfCursor;      // DCF cursor for the SDO loads
+    UNS32                   dcfSize;        // DCF total data size for this slave
+    UNS32                   dcfState;       // DCF state. 0 - writeInit, 1 - writeInProgress. Used to determine current state in the callback
 } _bootSlave_data_t;
 
 DECLARE_SM_TYPE(BOOTSLAVE, _sm_BootSlave_States, SDOCallback_t, _bootSlave_data_t);
