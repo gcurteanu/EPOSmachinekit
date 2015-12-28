@@ -898,10 +898,12 @@ int main(int argc,char **argv)
         //ds302_preOperational_postBoot (&EPOScontrol_Data);
 
 	// use the new state machine
-	INIT_SM(BOOTMASTER,_masterBoot,MB_INITIAL);
+	//INIT_SM(BOOTMASTER,_masterBoot,MB_INITIAL);
+
+    ds302_init (&EPOScontrol_Data);
 
 	EnterMutex();
-	START_SM(_masterBoot, &EPOScontrol_Data, 0);
+	START_SM(ds302_data._masterBoot, &EPOScontrol_Data, 0);
 	LeaveMutex();
 
 	// timer play

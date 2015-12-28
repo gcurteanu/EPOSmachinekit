@@ -7,6 +7,9 @@
 //#define DS302_DEBUG(msg)
 #define DS302_DEBUG(...) eprintf(__VA_ARGS__)
 
+// max time in us for a boot
+#define NODE_BOOT_TIME 10*1000*1000
+
 // gets the clock in microsecs
 uint64_t rtuClock()
 {
@@ -217,7 +220,7 @@ void _sm_BootSlave_getDeviceType(CO_Data* d, UNS8 nodeid)
             // switch to pulling the IDs
             //SM_SWITCH_STATE(SM_BOOTSLAVE_GET_ID1,d,nodeid)
             SWITCH_SM(ds302_data._bootSlave[nodeid], SM_BOOTSLAVE_GET_ID1, d, nodeid);
-            return
+            return;
         } else {
             // skip pulling the IDs chain
             //SM_SWITCH_STATE(SM_BOOTSLAVE_DECIDE_BC,d,nodeid)
@@ -248,7 +251,7 @@ void _sm_BootSlave_getIdentification_1(CO_Data* d, UNS8 nodeid)
 
     UNS32   size = sizeof(DATA_SM(ds302_data._bootSlave[nodeid]).Index1018_1);
     UNS8    retcode = getReadResultNetworkDict (d, nodeid, &DATA_SM(ds302_data._bootSlave[nodeid]).Index1018_1, &size,
-            &DATA_SM(ds302_data._bootSlave[nodeid]).error_code);
+            &DATA_SM(ds302_data._bootSlave[nodeid]).errorCode);
 
     if (retcode == SDO_UPLOAD_IN_PROGRESS || retcode == SDO_DOWNLOAD_IN_PROGRESS)
             // do nothing, outside of callback call
@@ -447,7 +450,7 @@ void _sm_BootSlave_doConfigurationVersionChecks(CO_Data* d, UNS8 nodeid)
             // we have the values, get them and compare them
             //SM_SWITCH_STATE(SM_BOOTSLAVE_VERIFY_CONFVER_1,d,nodeid)
             SWITCH_SM (ds302_data._bootSlave[nodeid], SM_BOOTSLAVE_VERIFY_CONFVER_1, d, nodeid);
-            return
+            return;
         }
     }  
 }
@@ -478,7 +481,8 @@ void _sm_BootSlave_verifyConfigurationVersion_1(CO_Data* d, UNS8 nodeid)
         // here we have an error, but it is NOT fatal!!!
         // SM_ERROR(nodeid, SM_ErrO);
         // set the data to -1 to indicate failure to retrieve
-        SM_DATA(nodeid,Index1020_1) = -1;
+        //SM_DATA(nodeid,Index1020_1) = -1;
+        DATA_SM(ds302_data._bootSlave[nodeid]).Index1020_1 = -1;
     }
     /* Finalise last SDO transfer with this node */
     closeSDOtransfer(d, nodeid, SDO_CLIENT);  
@@ -523,7 +527,8 @@ void _sm_BootSlave_verifyConfigurationVersion_2(CO_Data* d, UNS8 nodeid)
         // here we have an error, but it is NOT fatal!!!
         // SM_ERROR(nodeid, SM_ErrO);     
         // set the data to -1 to indicate failure to retrieve
-        SM_DATA(nodeid,Index1020_2) = -1;
+        //SM_DATA(nodeid,Index1020_2) = -1;
+        DATA_SM(ds302_data._bootSlave[nodeid]).Index1020_2 = -1;
     }
     /* Finalise last SDO transfer with this node */
     closeSDOtransfer(d, nodeid, SDO_CLIENT);  
@@ -635,7 +640,7 @@ void _sm_BootSlave_errorControlStarted(CO_Data* d, UNS8 nodeid)  // here we need
     DS302_DEBUG("_sm_BootSlave_errorControlStarted\n");
     if (INITIAL_SM(ds302_data._bootSlave[nodeid])) {
         // simple decisional node, have we went via D path or not
-        if (DATA_SM(ds302_data._bootSlave[nodeid])ViaDPath) {
+        if (DATA_SM(ds302_data._bootSlave[nodeid]).ViaDPath) {
             //SM_ERROR(nodeid, SM_ErrL);
             DATA_SM(ds302_data._bootSlave[nodeid]).result = SM_ErrL;
             STOP_SM(ds302_data._bootSlave[nodeid]);
@@ -839,9 +844,9 @@ int ds302_all_mandatory_booted (CO_Data* d)
             // node is in list
             if (*(UNS32 *)Object1F81->pSubindex[nodeid].pObject & DS302_NL_MANDATORY) {
                 // node is mandatory
-                if (ds302_boot_data[nodeid] != BootCompleted) {
+                if (DATA_SM(ds302_data._bootSlave[nodeid]).state != BootCompleted) {
                     DS302_DEBUG("Mandatory slave not booted\n");
-                    eprintf ("Slave ID is %d, state is %d\n", nodeid, ds302_boot_data[nodeid]);
+                    eprintf ("Slave ID is %d, state is %d\n", nodeid, DATA_SM(ds302_data._bootSlave[nodeid]).state);
                     return 0;
                 }
             }
@@ -893,7 +898,7 @@ void _sm_BootMaster_initial (CO_Data* d, UNS32 idx)
     }
 
     // go straight to the boot process, always
-    SWITCH_SM(_masterBoot, MB_BOOTPROC, d, idx);
+    SWITCH_SM(ds302_data._masterBoot, MB_BOOTPROC, d, idx);
 }
 
 void _sm_BootMaster_bootproc (CO_Data* d, UNS32 idx)
@@ -918,7 +923,7 @@ void _sm_BootMaster_bootproc (CO_Data* d, UNS32 idx)
         // this is the first run, so start all the state machines for the slaves in the network list
         eprintf ("_sm_BootMaster_bootproc INITIAL\n");
 
-        for (i=slaveid; i<NMT_MAX_NODE_ID; i++)
+        for (slaveid=1; slaveid<NMT_MAX_NODE_ID; slaveid++)
             if (ds302_nl_node_in_list(d, slaveid)) {
                 // it's a slave, so start it's machine
                 
@@ -927,11 +932,11 @@ void _sm_BootMaster_bootproc (CO_Data* d, UNS32 idx)
                 
                 // mark the start time
                 //SM_DATA(i,start_time) = rtuClock();
-                DATA_SM(ds302_data._bootSlave[slaveid]).start_time = rtuClock();
+                DATA_SM(ds302_data._bootSlave[slaveid]).bootStart = rtuClock();
                 
                 //EnterMutex();
                 //SM_RUN_MACHINE(d, i);
-                START_SM(ds302_data._bootSlave[slaveid]);
+                START_SM(ds302_data._bootSlave[slaveid], d, slaveid);
                 //LeaveMutex();
             } else {
                 
@@ -980,13 +985,13 @@ void _sm_BootMaster_bootproc (CO_Data* d, UNS32 idx)
             
             if (result == SM_ErrB) {
                 // get current time
-                uint64_t		elapsedTime = rtuClock() - DATA_SM (ds302_data._bootSlave[slaveid]).start_time;
+                uint64_t		elapsedTime = rtuClock() - DATA_SM (ds302_data._bootSlave[slaveid]).bootStart;
                 
-                DS302_DEBUG ("Got status B for SM %d, elapsed time %d\n", i, elapsedTime);
+                DS302_DEBUG ("Got status B for SM %d, elapsed time %d\n", slaveid, elapsedTime);
                 
                 // check if it's mandatory
                 if (ds302_nl_mandatory_node(d, slaveid)) {
-                    if (elapsedTime > bootTime) {
+                    if (elapsedTime > NODE_BOOT_TIME) {
                         // boot expired for this
                         DS302_DEBUG("Boot expired for mandatory slave %d (time %d)\n", slaveid, elapsedTime);
                         // signal result
@@ -997,8 +1002,8 @@ void _sm_BootMaster_bootproc (CO_Data* d, UNS32 idx)
                         // re-initialize the state machine
                         
                         DS302_DEBUG("Boot time not expired for slave %d, rescheduling\n", slaveid);
-                        INIT_SM (ds302_data._bootSlave[slaveid]);
-                        START_SM (ds302_data._bootSlave[slaveid]);
+                        INIT_SM (BOOTSLAVE, ds302_data._bootSlave[slaveid], SM_BOOTSLAVE_INITIAL);
+                        START_SM (ds302_data._bootSlave[slaveid], d, slaveid);
                         
                         // mark that we're not done yet
                         all_slaves_booted = 0;
@@ -1015,7 +1020,7 @@ void _sm_BootMaster_bootproc (CO_Data* d, UNS32 idx)
                 DATA_SM (ds302_data._bootSlave[slaveid]).state = BootError;
             } else {
                 // we ended with a successfull run
-                DS302_DEBUG("Result is OK, BootCompleted for %d <---\n", i);
+                DS302_DEBUG("Result is OK, BootCompleted for %d <---\n", slaveid);
                 // signal state
                 DATA_SM (ds302_data._bootSlave[slaveid]).state = BootCompleted;
             }
@@ -1079,7 +1084,7 @@ void _sm_BootMaster_operwait (CO_Data* d, UNS32 idx)
         DS302_DEBUG("Was put externally into operational, switching to MB_SLAVESTART\n");
         
         // switch to start slaves
-        SWITCH_SM(_masterBoot, MB_SLAVESTART, d, idx);
+        SWITCH_SM(ds302_data._masterBoot, MB_SLAVESTART, d, idx);
         return;
     }
 
