@@ -207,16 +207,60 @@ void _sm_BootSlave_getDeviceType(CO_Data* d, UNS8 nodeid)
 
     // we have the data in Index1000
     // compare against the expected value in 0x1F84
+    
+    UNS32   Obj1F84;
+    UNS32   size = sizeof (Obj1F84);
+    
+    DATA_SM(ds302_data._bootSlave[nodeid]).errorCode = readLocalDict (d, 0x1F84, nodeid, &Obj1F84, &size, 0, 0);
+    if (DATA_SM(ds302_data._bootSlave[nodeid]).errorCode != OD_SUCCESSFUL) {
+        // null out the value, it means it's unavailable. It's not a fatal error
+        Obj1F84 = 0x00000000;
+    }
+    
     // dummy check for now
-    if (0) {
+    if (Obj1F84 != 0 && DATA_SM(ds302_data._bootSlave[nodeid]).Index1000 != Obj1F84) {
             //SM_ERROR(nodeid, SM_ErrC);
+            // we have a mismatch in the Device Type values from expected
             DATA_SM(ds302_data._bootSlave[nodeid]).result = SM_ErrC;
             STOP_SM(ds302_data._bootSlave[nodeid]);
             return;
     } else {
         // everything OK, see if we need to check IDs or not
-        // dummy check for now
-        if (1) {
+        UNS32   Obj1F85;
+        UNS32   Obj1F86;
+        UNS32   Obj1F87;
+        UNS32   Obj1F88;
+        
+        size = sizeof (Obj1F85);
+        DATA_SM(ds302_data._bootSlave[nodeid]).errorCode = readLocalDict (d, 0x1F85, nodeid, &Obj1F85, &size, 0, 0);
+        if (DATA_SM(ds302_data._bootSlave[nodeid]).errorCode != OD_SUCCESSFUL) {
+            // null out the value, it means it's unavailable. It's not a fatal error
+            Obj1F85 = 0x00000000;
+        }
+
+        size = sizeof (Obj1F86);
+        DATA_SM(ds302_data._bootSlave[nodeid]).errorCode = readLocalDict (d, 0x1F86, nodeid, &Obj1F86, &size, 0, 0);
+        if (DATA_SM(ds302_data._bootSlave[nodeid]).errorCode != OD_SUCCESSFUL) {
+            // null out the value, it means it's unavailable. It's not a fatal error
+            Obj1F86 = 0x00000000;
+        }
+
+        size = sizeof (Obj1F87);
+        DATA_SM(ds302_data._bootSlave[nodeid]).errorCode = readLocalDict (d, 0x1F87, nodeid, &Obj1F87, &size, 0, 0);
+        if (DATA_SM(ds302_data._bootSlave[nodeid]).errorCode != OD_SUCCESSFUL) {
+            // null out the value, it means it's unavailable. It's not a fatal error
+            Obj1F87 = 0x00000000;
+        }
+
+        size = sizeof (Obj1F88);
+        DATA_SM(ds302_data._bootSlave[nodeid]).errorCode = readLocalDict (d, 0x1F88, nodeid, &Obj1F88, &size, 0, 0);
+        if (DATA_SM(ds302_data._bootSlave[nodeid]).errorCode != OD_SUCCESSFUL) {
+            // null out the value, it means it's unavailable. It's not a fatal error
+            Obj1F88 = 0x00000000;
+        }
+        
+        // dummy check for now        
+        if (Obj1F85 || Obj1F86 || Obj1F87 || Obj1F88) {
             // switch to pulling the IDs
             //SM_SWITCH_STATE(SM_BOOTSLAVE_GET_ID1,d,nodeid)
             SWITCH_SM(ds302_data._bootSlave[nodeid], SM_BOOTSLAVE_GET_ID1, d, nodeid);
@@ -267,8 +311,17 @@ void _sm_BootSlave_getIdentification_1(CO_Data* d, UNS8 nodeid)
             return;
     }    
     
+    UNS32   Obj1F85;
+    UNS32   size;
+    size = sizeof (Obj1F85);
+    DATA_SM(ds302_data._bootSlave[nodeid]).errorCode = readLocalDict (d, 0x1F85, nodeid, &Obj1F85, &size, 0, 0);
+    if (DATA_SM(ds302_data._bootSlave[nodeid]).errorCode != OD_SUCCESSFUL) {
+        // null out the value, it means it's unavailable. It's not a fatal error
+        Obj1F85 = 0x00000000;
+    }
+    
     // verify against required data in 0x1F85
-    if (0) {
+    if (Obj1F85 != 0 && DATA_SM(ds302_data._bootSlave[nodeid]).Index1018_1 != Obj1F85) {
         // mismatch, stop process
         //SM_ERROR(nodeid, SM_ErrD);
         DATA_SM(ds302_data._bootSlave[nodeid]).result = SM_ErrD;
@@ -313,8 +366,17 @@ void _sm_BootSlave_getIdentification_2(CO_Data* d, UNS8 nodeid)
         return;
     }
 
+    UNS32   Obj1F86;
+    UNS32   size;
+    size = sizeof (Obj1F86);
+    DATA_SM(ds302_data._bootSlave[nodeid]).errorCode = readLocalDict (d, 0x1F86, nodeid, &Obj1F86, &size, 0, 0);
+    if (DATA_SM(ds302_data._bootSlave[nodeid]).errorCode != OD_SUCCESSFUL) {
+        // null out the value, it means it's unavailable. It's not a fatal error
+        Obj1F86 = 0x00000000;
+    }
+    
     // verify against required data in 0x1F86
-    if (0) {                  
+    if (Obj1F86 != 0 && DATA_SM(ds302_data._bootSlave[nodeid]).Index1018_2 != Obj1F86) {
         // mismatch, stop process
         // SM_ERROR(nodeid, SM_ErrM);
         DATA_SM(ds302_data._bootSlave[nodeid]).result = SM_ErrM;
@@ -359,8 +421,17 @@ void _sm_BootSlave_getIdentification_3(CO_Data* d, UNS8 nodeid)
         return;
     }
 
+    UNS32   Obj1F87;
+    UNS32   size;
+    size = sizeof (Obj1F87);
+    DATA_SM(ds302_data._bootSlave[nodeid]).errorCode = readLocalDict (d, 0x1F87, nodeid, &Obj1F87, &size, 0, 0);
+    if (DATA_SM(ds302_data._bootSlave[nodeid]).errorCode != OD_SUCCESSFUL) {
+        // null out the value, it means it's unavailable. It's not a fatal error
+        Obj1F87 = 0x00000000;
+    }
+    
     // verify against required data in 0x1F87
-    if (0) {                  
+    if (Obj1F87 != 0 && DATA_SM(ds302_data._bootSlave[nodeid]).Index1018_3 != Obj1F87) {
         // mismatch, stop process
         //SM_ERROR(nodeid, SM_ErrN);
         DATA_SM(ds302_data._bootSlave[nodeid]).result = SM_ErrN;
@@ -405,8 +476,17 @@ void _sm_BootSlave_getIdentification_4(CO_Data* d, UNS8 nodeid)
         return;
     }
 
-    // verify against required data in 0x1F85
-    if (0) {                  
+    UNS32   Obj1F88;
+    UNS32   size;
+    size = sizeof (Obj1F88);
+    DATA_SM(ds302_data._bootSlave[nodeid]).errorCode = readLocalDict (d, 0x1F88, nodeid, &Obj1F88, &size, 0, 0);
+    if (DATA_SM(ds302_data._bootSlave[nodeid]).errorCode != OD_SUCCESSFUL) {
+        // null out the value, it means it's unavailable. It's not a fatal error
+        Obj1F88 = 0x00000000;
+    }
+    
+    // verify against required data in 0x1F88
+    if (Obj1F88 != 0 && DATA_SM(ds302_data._bootSlave[nodeid]).Index1018_4 != Obj1F88) {
         // mismatch, stop process
         //SM_ERROR(nodeid, SM_ErrO);
         DATA_SM(ds302_data._bootSlave[nodeid]).result = SM_ErrO;
@@ -441,7 +521,25 @@ void _sm_BootSlave_doConfigurationVersionChecks(CO_Data* d, UNS8 nodeid)
         // see if we have 0x1F26 and 0x1F27 defined in the config for the node
         // if so, get the device info, if not download config
 
-        if (0) {
+        UNS32   Obj1F26;
+        UNS32   size;
+        size = sizeof (Obj1F26);
+        DATA_SM(ds302_data._bootSlave[nodeid]).errorCode = readLocalDict (d, 0x1F26, nodeid, &Obj1F26, &size, 0, 0);
+        if (DATA_SM(ds302_data._bootSlave[nodeid]).errorCode != OD_SUCCESSFUL) {
+            // null out the value, it means it's unavailable. It's not a fatal error
+            Obj1F26 = 0x00000000;
+        }
+
+        UNS32   Obj1F27;
+        UNS32   size;
+        size = sizeof (Obj1F27);
+        DATA_SM(ds302_data._bootSlave[nodeid]).errorCode = readLocalDict (d, 0x1F27, nodeid, &Obj1F27, &size, 0, 0);
+        if (DATA_SM(ds302_data._bootSlave[nodeid]).errorCode != OD_SUCCESSFUL) {
+            // null out the value, it means it's unavailable. It's not a fatal error
+            Obj1F27 = 0x00000000;
+        }
+                
+        if (Obj1F26 == 0 || Obj1F27 == 0) {
             // we don't have the values, go straight to download
             //SM_SWITCH_STATE(SM_BOOTSLAVE_DOWNLOAD_CONFIG,d,nodeid)
             SWITCH_SM (ds302_data._bootSlave[nodeid], SM_BOOTSLAVE_DOWNLOAD_CONFIG, d, nodeid);
@@ -487,8 +585,17 @@ void _sm_BootSlave_verifyConfigurationVersion_1(CO_Data* d, UNS8 nodeid)
     /* Finalise last SDO transfer with this node */
     closeSDOtransfer(d, nodeid, SDO_CLIENT);  
 
+    UNS32   Obj1F26;
+    UNS32   size;
+    size = sizeof (Obj1F26);
+    DATA_SM(ds302_data._bootSlave[nodeid]).errorCode = readLocalDict (d, 0x1F26, nodeid, &Obj1F26, &size, 0, 0);
+    if (DATA_SM(ds302_data._bootSlave[nodeid]).errorCode != OD_SUCCESSFUL) {
+        // null out the value, it means it's unavailable. It's not a fatal error
+        Obj1F26 = 0x00000000;
+    }    
+
     // verify against required data in 0x1F26
-    if (0) {                  
+    if (Obj1F26 && &DATA_SM(ds302_data._bootSlave[nodeid]).Index1020_1 != Obj1F26) {                  
         // mismatch, go directly to download
         //SM_SWITCH_STATE(SM_BOOTSLAVE_DOWNLOAD_CONFIG,d,nodeid)
         SWITCH_SM (ds302_data._bootSlave[nodeid], SM_BOOTSLAVE_DOWNLOAD_CONFIG, d, nodeid);
@@ -533,8 +640,17 @@ void _sm_BootSlave_verifyConfigurationVersion_2(CO_Data* d, UNS8 nodeid)
     /* Finalise last SDO transfer with this node */
     closeSDOtransfer(d, nodeid, SDO_CLIENT);  
 
+    UNS32   Obj1F27;
+    UNS32   size;
+    size = sizeof (Obj1F27);
+    DATA_SM(ds302_data._bootSlave[nodeid]).errorCode = readLocalDict (d, 0x1F27, nodeid, &Obj1F27, &size, 0, 0);
+    if (DATA_SM(ds302_data._bootSlave[nodeid]).errorCode != OD_SUCCESSFUL) {
+        // null out the value, it means it's unavailable. It's not a fatal error
+        Obj1F27 = 0x00000000;
+    }
+        
     // verify against required data in 0x1F27
-    if (1) {                  
+    if (Obj1F27 && &DATA_SM(ds302_data._bootSlave[nodeid]).Index1020_2 != Obj1F27) {
         // mismatch, go directly to download
         //SM_SWITCH_STATE(SM_BOOTSLAVE_DOWNLOAD_CONFIG,d,nodeid)
         SWITCH_SM (ds302_data._bootSlave[nodeid], SM_BOOTSLAVE_DOWNLOAD_CONFIG, d, nodeid);
@@ -728,9 +844,21 @@ void _sm_BootSlave_startErrorControlService(CO_Data* d, UNS8 nodeid)
         // display node state for fun
         e_nodeState slavestate = getNodeState (d, nodeid);
         DS302_DEBUG("Node state for slave %d is %x\n", nodeid, slavestate);
+
+        UNS32   Obj1016;
+        UNS32   size;
+        size = sizeof (Obj1016);
+        DATA_SM(ds302_data._bootSlave[nodeid]).errorCode = readLocalDict (d, 0x1016, nodeid, &Obj1016, &size, 0, 0);
+        if (DATA_SM(ds302_data._bootSlave[nodeid]).errorCode != OD_SUCCESSFUL) {
+            // null out the value, it means it's unavailable. It's not a fatal error
+            Obj1016 = 0x00000000;
+        }
+
+        // take just the consumer time
+        Obj1016 = Obj1016 & 0xFFFF;
         
         // is the heartbeat consumer non-zero for this node
-        if (1) {
+        if (Obj1016) {
             
             // non-zero consumer, use HB
             //SM_SWITCH_STATE(SM_BOOTSLAVE_WAIT_HB,d,nodeid)
@@ -739,10 +867,23 @@ void _sm_BootSlave_startErrorControlService(CO_Data* d, UNS8 nodeid)
         } else {
             // zero consumer, use NodeGuard
             // is the node still on the Network list (0x1F81 bit 0)
-            if (0) {
+            if (ds302_nl_node_in_list(d, nodeid)) {
                 // if yes, start node guard for it
-                // verify node guard for it, 0x1F81 bits 2,3
-                if (0) {
+                // verify node guard for it, 0x1F81 bytes 2,3
+
+                UNS32   Obj1F81;
+                UNS32   size;
+                size = sizeof (Obj1F81);
+                DATA_SM(ds302_data._bootSlave[nodeid]).errorCode = readLocalDict (d, 0x1F81, nodeid, &Obj1F81, &size, 0, 0);
+                if (DATA_SM(ds302_data._bootSlave[nodeid]).errorCode != OD_SUCCESSFUL) {
+                    // null out the value, it means it's unavailable. It's not a fatal error
+                    Obj1F81 = 0x00000000;
+                }
+
+                // take just the consumer time
+                Obj1F81 = (Obj1F81 & 0xFFFF0000) >> 16;
+                
+                if (Obj1F81) {
                     //node guard time non-zero
                     // start Node Guard for the node
                     //SM_SWITCH_STATE(SM_BOOTSLAVE_START_NODEGUARD,d,nodeid)
