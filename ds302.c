@@ -560,7 +560,7 @@ void _sm_BootSlave_downloadConfiguration(CO_Data* d, UNS8 nodeid)
         const indextable *	Object1F22;
         UNS32		        errorCode;
 
-        Object1F81 = (*d->scanIndexOD)(d, 0x1F22, &errorCode);
+        Object1F22 = (*d->scanIndexOD)(d, 0x1F22, &errorCode);
         if (errorCode != OD_SUCCESSFUL) {
             DS302_DEBUG("ConciseDCF for %d: can not get data for 0x1F22\n", nodeid);
             DATA_SM(ds302_data._bootSlave[nodeid]).result = SM_ErrJ;
