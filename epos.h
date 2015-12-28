@@ -2,6 +2,8 @@
     EPOS error table
 */
 
+#include <data.h>
+
 typedef struct {
     UNS16           error_code;
     const char *    message;
@@ -9,7 +11,7 @@ typedef struct {
 
 extern epos_error_t epos_error_table[];
 
-const char * epos_error (UNS16 errno);
+const char * epos_error_text (UNS16 errCode);
 
 #ifndef EPOS_ERROR_TABLE
 #define EPOS_ERROR_TABLE
@@ -46,11 +48,11 @@ epos_error_t epos_error_table[] = {
     {0xFF0B, "System Overloaded"}
 };
 
-const char * epos_error (UNS16 errno) {
+const char * epos_error_text (UNS16 errCode) {
     int i;
     
-    for (i = 0; i < sizeof(epos_error_table); i++)
-        if (epos_error_table[i].error_code == errno)
+    for (i = 0; i < sizeof(epos_error_table) / sizeof(epos_error_t); i++)
+        if (epos_error_table[i].error_code == errCode)
             return epos_error_table[i].message;
         
     return "(unknown)";
