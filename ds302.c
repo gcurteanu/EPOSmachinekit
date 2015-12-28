@@ -34,6 +34,29 @@ INIT_SM_TYPE(BOOTMASTER,_sm_BootMaster_States,TimerCallback_t,
 
 DECLARE_SM(BOOTMASTER, _masterBoot);
 
+INIT_SM_TYPE(BOOTSLAVE,_sm_BootSlave_States,SDOCallback_t,
+    _sm_BootSlave_initial,
+    _sm_BootSlave_getDeviceType,
+    _sm_BootSlave_getIdentification_1,
+    _sm_BootSlave_getIdentification_2,
+    _sm_BootSlave_getIdentification_3,
+    _sm_BootSlave_getIdentification_4,
+    _sm_BootSlave_decideBCPath,
+    _sm_BootSlave_doConfigurationVersionChecks,
+    _sm_BootSlave_verifyConfigurationVersion_1,
+    _sm_BootSlave_verifyConfigurationVersion_2,
+    _sm_BootSlave_downloadConfiguration,
+    _sm_BootSlave_startErrorControlService,
+    _sm_BootSlave_waitHeartbeat,
+    _sm_BootSlave_startNodeGuard,
+    _sm_BootSlave_errorControlStarted,
+    _sm_BootSlave_startSlave,
+);
+
+// declare the master ds302_data structure
+ds302_t     ds302_data;
+
+
 void test() {
 DECLARE_SM(BOOTMASTER,myMachine);
 INIT_SM(BOOTMASTER,myMachine,0);
