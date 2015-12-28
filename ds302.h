@@ -164,7 +164,7 @@ typedef struct {\
 extern SM_FUNCTION_TYPE SM_NAME##_machine_callbacks[];
 
 // Declares and initialises the function table for the machine type
-#define INIT_SM_TYPE(SM_NAME,SM_STATE_ENUM,SM_FUNCTION_TYPE,...) SM_FUNCTION_TYPE SM_NAME##_machine_callbacks[sizeof(SM_STATE_ENUM)] = { __VA_ARGS__ };
+#define INIT_SM_TYPE(SM_NAME,SM_STATE_ENUM,SM_FUNCTION_TYPE,...) SM_FUNCTION_TYPE SM_NAME##_machine_callbacks[] = { __VA_ARGS__ };
 
 // Get the machine data type for instance creation
 #define DECLARE_SM(SM_NAME,INST_NAME) SM_NAME##_SMtype	INST_NAME
