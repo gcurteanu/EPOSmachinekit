@@ -783,7 +783,7 @@ void _sm_BootSlave_waitHeartbeat(CO_Data* d, UNS8 nodeid)
     
     e_nodeState slavestate = getNodeState (d, nodeid);
 
-    if (slavestate != Initialisation && slavestate != Unknown_state) {
+    if (slavestate == Operational || slavestate == Pre_operational || slavestate == Stopped) {
         // means we have a heartbeat here
         DS302_DEBUG("Node state for slave %d is %x. We have a heartbeat\n", nodeid, slavestate);
         SWITCH_SM (ds302_data._bootSlave[nodeid], SM_BOOTSLAVE_ERRCTL_STARTED, d, nodeid);
