@@ -178,7 +178,7 @@ extern SM_FUNCTION_TYPE SM_NAME##_machine_callbacks[];
     if (INST_NAME.machine_op == MachInit) { INST_NAME.machine_op = MachRun; INST_NAME.machine_callbacks[INST_NAME.machine_state] (__VA_ARGS__); }
 
 #define RUN_SM(INST_NAME,...) \
-    if (INST_NAME.machine_op != MachStop) { INST_NAME.machine_op = MachRun; INST_NAME.machine_callbacks[INST_NAME.machine_state] (__VA_ARGS__); }
+    if (INST_NAME.machine_op == MachRun) { INST_NAME.machine_callbacks[INST_NAME.machine_state] (__VA_ARGS__); }
 
 #define SWITCH_SM(INST_NAME,NEW_STATE,...) \
     if (INST_NAME.machine_op == MachRun) {\
@@ -205,12 +205,84 @@ typedef enum {
     MB_SLAVESTART,
 } _sm_BootMaster_States;
 
+/*
+    Declare the BOOTMASTER state machine type
+*/
 DECLARE_SM_TYPE(BOOTMASTER, _sm_BootMaster_States, TimerCallback_t, int);
-
+/*
+    Declare the _masterBoot SM instance
+*/
 DECLARE_SM_EXT(BOOTMASTER, _masterBoot);
 
 /*
   Helper functions
 */
+/*
+ds302 bitcheck takes the OD index/subindex and a bitmask to apply.
+Works on 32 bit values only.
+Uses direct OD access, doesn't do any endian stuff, takes the value as present in memory (BEWARE)
+returns -1 for error, and 0/1 based on (OD & bitmask) == bitmask
+*/
 int ds302_bitcheck_32 (CO_Data* d, UNS16 idx, UNS8 subidx, UNS32 bitmask);
+
+/*
+ds302 NL node in list verifies if the specified slave is in the network list
+Eq. verifies if it has the slave bit set for it's index under 0x1F81
+*/
 int ds302_nl_node_in_list(CO_Data* d, UNS8 nodeid);
+
+
+typedef enum {
+    BootUnused,             // unused state machine, no slave defined
+    BootInitialised,        // boot initialised, we have a slave at this address
+    BootAttempted,          // boot was attempted for a optional slave
+    BootCompleted,          // boot completed ok for the slave
+    BootTimedOut,           // boot timed out for the slave
+} ds302_bootSlave_state_t;
+
+typedef struct {
+    _sm_BootSlave_Codes     result;         // Result of the state machine
+    ds302_bootSlave_state_t state;          // Result of the overall boot process
+    
+    char                    ViaDPath;       // In case we kept the slave UP during boot, don't reconfigure/start per DS-302
+
+    UNS32                   Index1000;      // Device Type
+
+    UNS32                   Index1018_1;    // Vendor ID. 0x0000 means don't care
+    UNS32                   Index1018_2;    // Product code. 0x0000 means don't care
+    UNS32                   Index1018_3;    // Revision number. 0x0000 means don't care
+    UNS32                   Index1018_4;    // Product Code. 0x0000 means don't care
+
+    UNS32                   Index1020_1;    // Configuration date. 0x0000 means don't care
+    UNS32                   Index1020_2;    // Configuration time. 0x0000 means don't care
+
+    uint64_t                bootStart;      // timestamp of the boot process start
+} _bootSlave_data_t;
+
+DECLARE_SM_TYPE(BOOTSLAVE, _sm_BootSlave_States, SDOCallback_t, _bootSlave_data_t);
+
+/*
+    DS 302 global structure holding all the DS 302 information
+*/
+typedef enum {
+    BootInit,
+    BootRunning,
+    BootCompleted,
+    BootError    
+} ds302_state_t;
+
+typedef struct {
+        ds302_state_t   bootState;                                          // DS-302 overall boot state
+        
+        DECLARE_SM (BOOTSLAVE, _bootSlave[NMT_MAX_NODE_ID]);                // boot slave machines
+        DECLARE_SM (BOOTMASTER, _masterBoot);                               // master boot machine
+} ds302_t;
+
+extern ds302_t     ds302_data;
+
+/* Initialise the DS-302 boot */
+void    ds302_init (CO_Data*);
+/* starts the DS-302 boot */
+void    ds302_start (CO_Data *);
+/* Gets the DS-302 boot status */
+ds302_state_t   ds302_status (CO_Data *);
