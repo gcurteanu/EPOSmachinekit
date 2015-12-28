@@ -34,10 +34,8 @@ Hardware:
 - No need for the Peak Linux driver. It is not used / useful from what can be seen
 - The RT-CAN in the kernel seems stable, but can not cope with Linux interrupt sharing when used in the RT model. Peak card MUST NOT share it's IRQ with other devices... Or else kernel panics.
 
-
-
-
-
+As far as positioning controller, Maxon EPOS 70/10. Looks like a very standard implementation of DS 402 is used, so if it works for this, it will work for others as well
+testing the CAN with a 25mtr CAN cable with 120ohm termination at both ends, point to point
 
 
 # DCF file format
@@ -46,6 +44,18 @@ The format for initializing slaves is the DCF format, but not sure if a full imp
 
 Standard DCF format is a bit complex for our needs, and also requires some application logic to apply in case of the PDO mappings
 (per 301 : disable PDO, set mapping count to zero, load mapping, configure PDO, enable mapping and PDO)
+
+"Subindex 0 determines the valid number of objects that have been mapped. For changing the PDO
+mapping first the PDO has to be deleted, the sub-index 0 must be set to 0 (mapping is deactivated).
+Then the objects can be remapped. When a new object is mapped by wrinting a subindex between 1
+and 64, the device may check whether the object specified by index / sub-index exists. If the object
+does not exist or the object cannot be mapped, the SDO transfer must be aborted with the Abort SDO
+Transfer Service with one of the abort codes 0602 0000h or 0604 0041h.
+After all objects are mapped subindex 0 is set to the valid number of mapped objects. Finally the PDO
+will be created by writing to its communication parameter COB-ID. When subindex 0 is set to a value
+>0 the device may validate the new PDO mapping before transmitting the response of the SDO
+service. If an error is detected the device has to transmit the Abort SDO Transfer Service with one of
+the abort codes 0602 0000h, 0604 0041h or 0604 0042h."
 
 Our format should directly describe the steps and should be a 1:1 mapping to SDO actions. One problem to cope with is describing the data size of the objects
 

@@ -1,5 +1,5 @@
 
-#define DCF_MAX_SIZE 4096
+#define DCF_MAX_SIZE 8192
 #define DEVICE_DICT_NAME "dcfdata.txt"
 #define DCF_MAX_NODE_ID 5
 
