@@ -1473,3 +1473,28 @@ int     ds302_load_dcf_local (CO_Data* d)
     
     return dcfLoadCount;
 }
+
+int ds302_setHeartbeat (CO_Data* d, UNS8 nodeid, UNS16 heartbeat) {
+    
+    UNS32               errorCode;
+    UNS32               hbdata;
+    UNS32               size = sizeof (hbdata);
+    
+    if (nodeid < 1 || nodeid > NMT_MAX_NODE_ID)
+        return 0;
+    
+    hbdata = nodeid << 16 | heartbeat;
+    
+    errorCode = writeLocalDict (d,
+        0x1016, nodeid, 
+        &hbdata, &size,
+        0 
+        );
+
+    if (errorCode != OD_SUCCESSFUL) {
+        // hit a send error
+        return 0;
+    }
+    
+    return 1;
+}

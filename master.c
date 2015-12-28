@@ -856,8 +856,6 @@ int main(int argc,char **argv)
     // load the DCF configuration for the master node before starting the timers and such
     ds302_load_dcf_local (&EPOScontrol_Data);
 
-    exit (0);
-
 #if !defined(WIN32) || defined(__CYGWIN__)
   /* install signal handler for manual break */
 	signal(SIGTERM, catch_signal);
@@ -912,6 +910,8 @@ int main(int argc,char **argv)
 	//INIT_SM(BOOTMASTER,_masterBoot,MB_INITIAL);
 
     ds302_init (&EPOScontrol_Data);
+    
+    ds302_setHeartbeat (&EPOScontrol_Data, 0x01, 1000);
 
 	EnterMutex();
 	START_SM(ds302_data._masterBoot, &EPOScontrol_Data, 0);
