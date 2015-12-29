@@ -715,6 +715,7 @@ int main(int argc,char **argv)
 
     epos_initialize_master (&EPOScontrol_Data, "dcfdata.txt");
     display_dcf_set (&EPOS_drive.dcf_data);
+    epos_add_slave (0x01);
     
     // load the DCF configuration for the master node before starting the timers and such
     ds302_load_dcf_local (&EPOScontrol_Data);
