@@ -57,6 +57,11 @@ unsigned int debug = 0;
 UNS8 dcfdatas[NMT_MAX_NODE_ID][DCF_MAX_SIZE];
 
 
+UNS32   Profile_Velocity;
+UNS32   Profile_Acceleration;
+UNS32   Profile_Deceleration;
+UNS32   Motion_ProfileType;
+
 //#define USE_HEARTBEAT
 #define HB_INTERVAL_MS		1000
 //#define USE_SYNC
