@@ -5,8 +5,8 @@ epos.c
 Main routines for the EPOS drives
 */
 
+#include "EPOScontrol.h"
 #include "epos.h"
-
 #include "dcf.h"
 
 #define EPOS_PDO_MAX     4
@@ -367,9 +367,9 @@ static UNS32 _statusWordCB (CO_Data * d, const indextable *idxtbl, UNS8 bSubinde
             // transition 2 to ready to switch on
             /* should be done if we REQUESTED to turn on */
             //EnterMutex();
-            SET_BIT(ControlWord, 2);
-            SET_BIT(ControlWord, 1);
-            CLEAR_BIT(ControlWord, 0);              
+            SET_BIT(ControlWord[idx], 2);
+            SET_BIT(ControlWord[idx], 1);
+            CLEAR_BIT(ControlWord[idx], 0);              
             //LeaveMutex();
             break;
         case EPOS_RSO:
@@ -379,9 +379,9 @@ static UNS32 _statusWordCB (CO_Data * d, const indextable *idxtbl, UNS8 bSubinde
             /* 3 if requested to turn on, 7 if requested to shut down */
             // this is #3
             //EnterMutex();
-            SET_BIT(ControlWord, 2);
-            SET_BIT(ControlWord, 1);
-            SET_BIT(ControlWord, 0);
+            SET_BIT(ControlWord[idx], 2);
+            SET_BIT(ControlWord[idx], 1);
+            SET_BIT(ControlWord[idx], 0);
             //LeaveMutex();
             break;
         case EPOS_SWO:
@@ -392,10 +392,10 @@ static UNS32 _statusWordCB (CO_Data * d, const indextable *idxtbl, UNS8 bSubinde
             /* 4 if requested to turn on, 6 or 10 if requested to shut down */
             // this is #4
             //EnterMutex();
-            SET_BIT(ControlWord, 3);
-            SET_BIT(ControlWord, 2);
-            SET_BIT(ControlWord, 1);
-            SET_BIT(ControlWord, 0);
+            SET_BIT(ControlWord[idx], 3);
+            SET_BIT(ControlWord[idx], 2);
+            SET_BIT(ControlWord[idx], 1);
+            SET_BIT(ControlWord[idx], 0);
             //LeaveMutex();
             break;
         case EPOS_REFRESH:
@@ -433,14 +433,14 @@ static UNS32 _statusWordCB (CO_Data * d, const indextable *idxtbl, UNS8 bSubinde
             // transition 15 to switch on disabled
             break;
         default:
-            eprintf("Bored to input codes. Unknown code %04x\n", EPOS_State);
+            eprintf("Bored to input codes. Unknown code %04x\n", EPOS_drive.EPOS_State[idx]);
     }
 
     // do the stupid assuming of position, and execution
     // if the set point ack is SET, then CLEAR the new set point flag
-    if(BIT_IS_SET(StatusWord, 12)) {
-        if (BIT_IS_SET(ControlWord, 4)) {
-            CLEAR_BIT(ControlWord, 4);
+    if(BIT_IS_SET(StatusWord[idx], 12)) {
+        if (BIT_IS_SET(ControlWord[idx], 4)) {
+            CLEAR_BIT(ControlWord[idx], 4);
             if (debug) eprintf ("New move ACK!\n");
         } else {
             eprintf ("What the FUCKING hell???\n");
