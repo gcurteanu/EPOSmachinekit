@@ -61,9 +61,9 @@ UNS32   Motion_ProfileType;
 
 //#define USE_HEARTBEAT
 #define HB_INTERVAL_MS		1000
-//#define USE_SYNC
+#define USE_SYNC
 #define SYNC_INTERVAL_MS 	10
-#define MAN_PDO
+//#define MAN_PDO
 
 
 #define PROFILE_VELOCITY	1500
@@ -505,15 +505,17 @@ int main(int argc,char **argv)
 	for (i=0; i<CYCLES; i++) {
 		eprintf ("Moving to %d\n", i);
 		int newposition = i * STEP_SIZE;
+#ifdef MAN_PDO
 		EnterMutex();
+#endif
 		//Target_Position = newposition;
 		//SET_BIT(ControlWord[0], 4); // 1 means NEW setpoint, it's cleared in callback once ACK
 		//Target_Position = newposition;
         PositionDemandValue[0] = newposition;        
 #ifdef MAN_PDO
         sendOnePDOevent(&EPOScontrol_Data, 1);
-#endif
 		LeaveMutex();
+#endif
 		eprintf ("Executing move...\n");
 		sleep_ms(SLEEP_TIME);
 	}
@@ -521,15 +523,17 @@ int main(int argc,char **argv)
 	for (i=CYCLES; i>=0; i--) {
                 eprintf ("Moving to %d\n", i);
                 int newposition = i * STEP_SIZE;
+#ifdef MAN_PDO
                 EnterMutex();
+#endif
                 //Target_Position = newposition;
                 //SET_BIT(ControlWord[0], 4); // 1 means NEW setpoint, it's cleared in callback once ACK
                 //Target_Position = newposition;
                 PositionDemandValue[0] = newposition;
 #ifdef MAN_PDO
 		sendOnePDOevent(&EPOScontrol_Data, 1);
-#endif
                 LeaveMutex();
+#endif
                 eprintf ("Executing move...\n");      
                 sleep_ms(SLEEP_TIME);
 
