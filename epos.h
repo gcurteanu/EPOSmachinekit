@@ -4,7 +4,7 @@
 
 #include <data.h>
 
-#include <dcf.h>
+#include "dcf.h"
 
 typedef struct {
     UNS16           error_code;
@@ -102,3 +102,7 @@ typedef struct {
     char        out_d_pin[MAX_EPOS_DRIVES];      // OUT D
 
 } EPOS_drive_t;
+
+
+
+int     epos_initialize_master (CO_Data * d, const char * dcf_file);

@@ -5,6 +5,8 @@ int clear_dcf (dcfstream_t *dcf) {
     if (!dcf)
         return 0;
     
+    dcf->size = EPOS_DCF_MAX_SIZE;
+    
     if (dcf->size >= 4) {
         // clean the DCF data
         dcf->dcf[0] = 0x00;
@@ -153,4 +155,155 @@ int     get_dcf_node (dcfset_t * set, UNS8 nodeid, dcfstream_t** dcf) {
         }
         
     return 0;
+}
+
+int clear_dcf_set (dcfset_t *set) {
+    
+    if (!set)
+        return 0;
+    
+    set->size = EPOS_DCF_MAX_NODES;
+    set->count = 0;
+    
+    int idx;
+    
+    for (idx = 0; idx < set->size; idx++) {
+        
+        set->nodes[idx].nodeid = 0x00;
+        clear_dcf (&set->nodes[idx]);
+    }
+    
+    return 1;
+}
+
+void    display_dcf_set (dcfset_t *set) {
+    
+    if (!set)
+        return;
+    
+    int idx;
+    
+    for (idx = 0; idx < set->count; idx++) {
+        
+        printf ("Concise DCF for node %d", set->nodes[idx].nodeid);
+        printf ("Has %d entries\n", get_dcf_count (&set->nodes[idx]));
+        display_dcf (&set->nodes[idx]);
+    }
+}
+
+int     load_dcf_set (dcfset_t *set, const char *filename) {
+    
+    if (!dcf)
+        return 0;
+    
+    clear_dcf_set (set);
+    
+    FILE    *f;
+    
+    f = fopen (filename, "r");
+    if (!f)
+        return 0;
+    
+    char        line[2048];
+    dcfstream_t *dcfstream = NULL;
+    
+    UNS8        nodeid;
+    UNS16       idx;
+    UNS8        subidx;
+    UNS32       len;
+    UNS32       data;
+    
+    char        *token, *errcheck;
+    
+    while (!feof(f)) {
+        char *ptr = fgets (line, 2048, f);
+        if (!ptr)
+            break;
+        
+        // skin comments
+        if (line[0] == '#' || line[0] == '/')
+            continue;
+        
+        if (line[0] = '[') {
+            // new section
+            token = strtok (line, " \t\r\n[]");
+            if (!token) {
+                printf ("Invalid section start %s", line);
+                continue;
+            }
+            
+            nodeid = strtod (token, &errcheck);
+            if (token == errcheck || errcheck[0] != 0x00) {
+                printf("Can not convert <%s> to index number, skipping line\n", token);
+                continue;
+            }
+            
+            // we have a [nodeid]
+            // test to see if duplicate
+            if (get_dcf_node (set, nodeid, &dcfstream)) {
+                printf("Duplicate nodeid %d found in file\n", nodeid);
+                fclose (f);
+                return 0;
+            }
+            
+            if (!add_dcf_node(set, nodeid, &dcfstream)) {
+                printf("Can not add nodeid %d\n", nodeid);
+                fclose (f);
+                return 0;                
+            }
+            // hopefully we have the node ID and allocated the entry for it
+            continue;
+        }
+        
+        // split the line in tokens
+        token = strtok (line, " \t\r\n");
+        // empty line?
+        if (!token)
+            continue;
+        
+        idx = strtod (token, &errcheck);
+        if (token == errcheck || errcheck[0] != 0x00) {
+            printf("Can not convert <%s> to index number, skipping line\n", token);
+            continue;
+        }
+        
+        token = strtok (NULL, " \t\r\n");
+        if (!token)
+            continue;
+        subidx = strtod (token, &errcheck);
+        if (token == errcheck || errcheck[0] != 0x00) {
+            printf("Can not convert <%s> to subindex number, skipping line\n", token);
+            continue;
+        }
+
+        token = strtok (NULL, " \t\r\n");
+        if (!token)
+            continue;
+        len = strtod (token, &errcheck);
+        if (token == errcheck || errcheck[0] != 0x00) {
+            printf("Can not convert <%s> to length, skipping line\n", token);
+            continue;
+        }
+        
+        token = strtok (NULL, " \t\r\n");
+        if (!token)
+            continue;
+        data = strtod (token, &errcheck);
+        if (token == errcheck || errcheck[0] != 0x00) {
+            printf("Can not convert <%s> to data, skipping line\n", token);
+            continue;
+        }
+        
+        // we have a entry. Add it to the DCF
+        if (dcfstream != NULL) {
+            if (!add_dcf_entry (dcfstream, idx, subidx, len, &data)) {
+                printf ("Can't add DCF entry %04x/%02x = %08x (%d)\n", idx, subidx, data, len);
+                continue;
+            }
+        } else {
+            printf ("Found data outside of [nodeid] section\n");
+        }
+    }
+    
+    close (f);
 }

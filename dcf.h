@@ -25,7 +25,8 @@ int     add_dcf_entry (dcfstream_t *, UNS16 object, UNS8 subindex, UNS32 count, 
 void    display_dcf (dcfstream_t *);
 
 int     clear_dcf_set (dcfset_t *);
-int     add_dcf_node (dcfset_t *, UNS8);
+int     add_dcf_node (dcfset_t *, UNS8, dcfstream_t**);
 int     get_dcf_node (dcfset_t *, UNS8, dcfstream_t**);
-
 int     load_dcf_set (dcfset_t *, const char *);
+
+void    display_dcf_set (dcfset_t *);

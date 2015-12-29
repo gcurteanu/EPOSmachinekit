@@ -287,15 +287,11 @@ int     epos_initialize_master (CO_Data * d, const char * dcf_file) {
     EPOS_drive.epos_slave_count = 0;
     EPOS_drive.d = d;
     
+    clear_dcf_set (&EPOS_drive.dcf_data);
+    
     for (idx = 0; idx < MAX_EPOS_DRIVES; idx++) {
         // clean the slaves
         epos_slaves[idx] = 0x00;
-        
-        // clean the DCF data
-        dcf_data[idx][0] = 0x00;
-        dcf_data[idx][1] = 0x00;
-        dcf_data[idx][2] = 0x00;
-        dcf_data[idx][3] = 0x00;
         
         // clean the error data
         slave_err[idx][0] = 0x00;
@@ -306,6 +302,7 @@ int     epos_initialize_master (CO_Data * d, const char * dcf_file) {
         RegisterSetODentryCallBack (d, 0x5041, 0x01 + idx, _statusWordCB);
     }
     
+    load_dcf_set (&EPOS_drive.dcf_data, dcf_file);
 }
 
 /*
