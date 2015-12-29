@@ -87,6 +87,7 @@ int add_dcf_entry (dcfstream_t *dcf, UNS16 object, UNS8 subindex, UNS32 datasize
     for (idx = 0; idx < datasize; idx++)
         dcf->dcf[cursor++] = ((UNS8 *)data)[idx];
     
+    printf ("Added entry, cursor %d, had items %d\n", cursor, total_items);
     // increment count
     total_items++;
     dcf->dcf[0] = total_items;
