@@ -1,5 +1,7 @@
 #include "dcf.h"
 
+#define eprintf(...) printf(__VA_ARGS__)
+
 int clear_dcf (dcfstream_t *dcf) {
     
     if (!dcf)

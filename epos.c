@@ -11,6 +11,8 @@ Main routines for the EPOS drives
 
 #define EPOS_PDO_MAX     4
 
+#define eprintf(...) printf(__VA_ARGS__)
+
 epos_error_t epos_error_table[] = {
     {0x0000, "No error", "No error is present"},
     {0x1000, "Generic error", "Unspecific error occurred"},
@@ -92,13 +94,13 @@ int    epos_add_slave (UNS8 slaveid) {
     EPOS_drive.epos_slaves[EPOS_drive.epos_slave_count] = slaveid;
     
     // setup the SDOs
-    if (!setup_sdo (slaveid, EPOS_drive.epos_slave_count))
+    if (!epos_setup_sdo (slaveid, EPOS_drive.epos_slave_count))
         return 0;
     
     // setup the PDO block for the node
-    if (!setup_rx_pdo (slaveid, EPOS_drive.epos_slave_count))
+    if (!epos_setup_rx_pdo (slaveid, EPOS_drive.epos_slave_count))
         return 0;
-    if (!setup_tx_pdo (slaveid, EPOS_drive.epos_slave_count))
+    if (!epos_setup_tx_pdo (slaveid, EPOS_drive.epos_slave_count))
         return 0;
     
     // add the DCF data to the node
