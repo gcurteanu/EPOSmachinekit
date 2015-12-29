@@ -15,12 +15,17 @@ extern epos_error_t epos_error_table[];
 const char * epos_error_text (UNS16 errCode);
 
 #define MAX_EPOS_DRIVES     5
+#define EPOS_DCF_MAX_SIZE   16384
 
 typedef struct {
     
     // the list of the EPOS slaves we control
     UNS8        epos_slaves[MAX_EPOS_DRIVES];
     UNS8        epos_slave_count;
+    
+    UNS8        dcf_data[MAX_EPOS_DRIVES][EPOS_DCF_MAX_SIZE];
+    
+    CO_Data*    d;
     
     // enabled or disabled
     char        drive_enabled;
@@ -75,4 +80,4 @@ typedef struct {
     char        out_c_pin[MAX_EPOS_DRIVES];      // OUT C
     char        out_d_pin[MAX_EPOS_DRIVES];      // OUT D
 
-} EPOS_drive;
+} EPOS_drive_t;

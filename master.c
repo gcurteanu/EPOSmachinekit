@@ -45,6 +45,8 @@ void pause(void)
 
 #include "ds302.h"
 
+#include "epos.h"
+
 //#include "epos_api.h"
 
 unsigned int slavenodeid = 0x01;
@@ -824,7 +826,7 @@ int main(int argc,char **argv)
           help();
           exit(1);
         }
-        snodeid = optarg;
+        nodeid = optarg;
 		sscanf(snodeid,"%x",&slavenodeid);
         break;
       default:
@@ -833,11 +835,11 @@ int main(int argc,char **argv)
     }
   }
 
-	setup_dcf ();
+    setup_dcf ();
 
-	// Set the master ID
-	// THE STUPID MASTER ID SET WILL REWRITE THE SDOs/PDOs
-	setNodeId(&EPOScontrol_Data, 0x7F);
+    // Set the master ID
+    // THE STUPID MASTER ID SET WILL REWRITE THE SDOs/PDOs
+    setNodeId(&EPOScontrol_Data, 0x7F);
 
     // load the DCF configuration for the master node before starting the timers and such
     ds302_load_dcf_local (&EPOScontrol_Data);
@@ -876,8 +878,6 @@ int main(int argc,char **argv)
 	// Call My Back 1 : do the state machine for StatusWord
 	//RegisterSetODentryCallBack (&EPOScontrol_Data, 0x4001, 0x00, StatusWordCallback);
 	
-	UNS16 cw = 0x01;
-
 	if(!canOpen(&MasterBoard,&EPOScontrol_Data)){
 		eprintf("Cannot open Master Board\n");
 		goto fail_master;
@@ -888,15 +888,6 @@ int main(int argc,char **argv)
 	
 	/* doing the boot process in the MAIN loop */
 	
-        // Move to DS 302 procedures
-
-        //ds302_preOperational_preBoot (&EPOScontrol_Data);
-        //ds302_slaveBootprocess (&EPOScontrol_Data);
-        //ds302_preOperational_postBoot (&EPOScontrol_Data);
-
-	// use the new state machine
-	//INIT_SM(BOOTMASTER,_masterBoot,MB_INITIAL);
-
     ds302_init (&EPOScontrol_Data);
     ds302_setHeartbeat (&EPOScontrol_Data, 0x01, 1200);
 
