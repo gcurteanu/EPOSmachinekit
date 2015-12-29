@@ -260,6 +260,156 @@ int     epos_setup_tx_pdo (UNS8 slaveid, int idx) {
 
 int     epos_initialize_master (CO_Data * d, const char * dcf_file) {
     
+    int idx;
+    
     EPOS_drive.epos_slave_count = 0;
     EPOS_drive.d = d;
+    
+    for (idx = 0; idx < MAX_EPOS_DRIVES; idx++) {
+        // clean the slaves
+        epos_slaves[idx] = 0x00;
+        
+        // clean the DCF data
+        dcf_data[idx][0] = 0x00;
+        dcf_data[idx][1] = 0x00;
+        dcf_data[idx][2] = 0x00;
+        dcf_data[idx][3] = 0x00;
+        
+        // clean the error data
+        slave_err[idx][0] = 0x00;
+
+        // set the callbacks
+        
+        // callback for drive status word
+        RegisterSetODentryCallBack (d, 0x5041, 0x01 + idx, _statusWordCB);
+    }
+    
+}
+
+/*
+ * Name         : epos_get_slave_index
+ *
+ * Synopsis     : int     epos_get_slave_index (UNS8 slaveid)
+ *
+ * Arguments    : UNS8  slaveid : Slave ID
+ *
+ * Description  : returns the slave index for the provided ID
+ * 
+ * Returns      : int     
+ */
+
+int     epos_get_slave_index (UNS8 slaveid) {
+    
+    int idx;
+    for (idx = 0; idx < EPOS_drive.epos_slave_count; idx++)
+        if (EPOS_drive.epos_slaves[idx] == slaveid)
+            return idx;
+        
+    return -1;
+}
+
+void    _statusWordCB (CO_Data * d, const indextable *idx, UNS8 bSubindex) {
+    
+    // idx is the OD entry, bSubindex is the array item in it (eq. drive idx + 1)
+    int     idx = bSubindex - 1;
+
+    // update the state for the corresponding drive based on the status word
+    EPOS_drive.EPOS_State[idx] = (*(UNS16 *)idx->pSubindex[bSubindex].pObject) & 0x417F;
+    
+    /***** NOTE: callback from PDO, NO MUTEXES! ****/
+    switch (EPOS_State) {
+        case EPOS_START:
+            if (debug) eprintf("Start\n");
+            break;
+        case EPOS_NOTREADY:
+            if (debug) eprintf("Not Ready to Switch On\n");
+            // transition 1 to switch on disabled
+            // AUTOMATIC
+            break;
+        case EPOS_SOD:
+            if (debug) eprintf("Switch On Disabled\n");
+            // transition 2 to ready to switch on
+            /* should be done if we REQUESTED to turn on */
+            //EnterMutex();
+            SET_BIT(ControlWord, 2);
+            SET_BIT(ControlWord, 1);
+            CLEAR_BIT(ControlWord, 0);              
+            //LeaveMutex();
+            break;
+        case EPOS_RSO:
+            if (debug) eprintf("Ready to Switch On\n");
+            // transition 3 to switched on
+            // transition 7 to switch on disabled
+            /* 3 if requested to turn on, 7 if requested to shut down */
+            // this is #3
+            //EnterMutex();
+            SET_BIT(ControlWord, 2);
+            SET_BIT(ControlWord, 1);
+            SET_BIT(ControlWord, 0);
+            //LeaveMutex();
+            break;
+        case EPOS_SWO:
+            if (debug) eprintf("Switched on\n");
+            // transition 4 to refresh -> measure
+            // transition 6 to ready to switch on
+            // transition 10 to switch on disabled
+            /* 4 if requested to turn on, 6 or 10 if requested to shut down */
+            // this is #4
+            //EnterMutex();
+            SET_BIT(ControlWord, 3);
+            SET_BIT(ControlWord, 2);
+            SET_BIT(ControlWord, 1);
+            SET_BIT(ControlWord, 0);
+            //LeaveMutex();
+            break;
+        case EPOS_REFRESH:
+            if (debug) eprintf("Refresh\n");
+            // transition 20 to measure
+            // this should be automatic
+            break;
+        case EPOS_MEASURE:
+            if (debug) eprintf("Measure Init\n");
+            // transition 21 to operation enable
+            // this should be automatic
+            break;
+        case EPOS_OPEN:
+            if (debug) eprintf("Operation enable\n");
+            // transition 5 to switched on
+            // transition 8 to readdy to switch on
+            // transition 9 to switch on disabled
+            // transition 11 to quick stop active
+            break;
+        case EPOS_QUICKS:
+            if (debug) eprintf("Quick Stop Active\n");
+            // transition 16 to operation enable
+            // transition 12 to switch on disabled
+            break;
+        case EPOS_FRAD:
+            if (debug) eprintf("Fault Reaction Active (disabled)\n");
+            // transition 18 to fault
+            break;
+        case EPOS_FRAE:
+            if (debug) eprintf("Fault Reaction Active (enabled)\n");
+            // transition 14 to fault
+            break;
+        case EPOS_FAULT:
+            if (debug) eprintf("Fault\n");
+            // transition 15 to switch on disabled
+            break;
+        default:
+            eprintf("Bored to input codes. Unknown code %04x\n", EPOS_State);
+    }
+
+    // do the stupid assuming of position, and execution
+    // if the set point ack is SET, then CLEAR the new set point flag
+    if(BIT_IS_SET(StatusWord, 12)) {
+        if (BIT_IS_SET(ControlWord, 4)) {
+            CLEAR_BIT(ControlWord, 4);
+            if (debug) eprintf ("New move ACK!\n");
+        } else {
+            eprintf ("What the FUCKING hell???\n");
+        }
+    }
+    
+    sendPDOevent(d);
 }

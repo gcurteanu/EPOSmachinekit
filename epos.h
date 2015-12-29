@@ -16,6 +16,22 @@ const char * epos_error_text (UNS16 errCode);
 
 #define MAX_EPOS_DRIVES     5
 #define EPOS_DCF_MAX_SIZE   16384
+#define EPOS_MAX_ERRORS     32
+
+typedef enum {
+    EPOS_START      = 0x0000,
+    EPOS_NOTREADY   = 0x0100,
+    EPOS_SOD        = 0x0140,
+    EPOS_RSO        = 0x0121,
+    EPOS_SWO        = 0x0123,
+    EPOS_REFRESH    = 0x4123,
+    EPOS_MEASURE    = 0x4133,
+    EPOS_OPEN       = 0x0137,
+    EPOS_QUICKS     = 0x0117,
+    EPOS_FRAD       = 0x010F,
+    EPOS_FRAE       = 0x011F,
+    EPOS_FAULT      = 0x0108,   
+} EPOS_DS402_state_t;
 
 typedef struct {
     
@@ -23,7 +39,11 @@ typedef struct {
     UNS8        epos_slaves[MAX_EPOS_DRIVES];
     UNS8        epos_slave_count;
     
+    // holds the DCF data for the nodes
     UNS8        dcf_data[MAX_EPOS_DRIVES][EPOS_DCF_MAX_SIZE];
+    
+    // holds the drive errors
+    UNS32       slave_err[MAX_EPOS_DRIVES][EPOS_MAX_ERRORS+1];
     
     CO_Data*    d;
     

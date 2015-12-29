@@ -122,3 +122,12 @@ velocity feedback
 
 The drive instance pins are arrays[]
 enable / fault are general pins, a fault on one will fault the component. enable will enable/disable all
+
+
+# Internal CANopen objects
+
+The module uses a set of internal CAN objects in the OD for drive control
+The mapping is as follows (rule is moving from 0x6000 to the 0x5000 manufacturer specific area):
+
+0x5040  - DS 402 control word array[numdrives] (DS 402 at 0x6040)
+0x5041  - DS 402 status word array[numdrives] (DS 402 at 0x6041)
