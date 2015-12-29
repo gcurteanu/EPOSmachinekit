@@ -77,3 +77,48 @@ Example:
 The standard DCF-like format might come, but since we're now doing Concise DCF the file format is up to us
 
 For initial testing, we will use the existing DCF example code from CanFestival
+
+
+
+
+# Machinekit/LinuxCNC interface
+
+- pin enable
+The pin enables / disables the drive.
+When enable high, drive seeks to get to the enabled state, clearing all the drive errors in the process
+When enable low, drive does a full stop via quickstop
+
+- pin enabled
+The drives are enabled
+
+- pin faulted
+At least one of the drives is faulted
+
+- control_type
+When 0 drive is in position mode (position command into effect)
+When 1 drive is in velocity mode (velocity command into effect)
+
+- maxvel
+- maxaccel
+Macimal velocity / acceleration values
+
+- counts
+raw encoder / position from the drive
+
+- position_scale
+scale for positioning. position = counts / position-scale
+
+- position_cmd
+position command (for position control)
+
+- velocity_cmd
+velocity command (for velocity control)
+
+- position_fb
+position feedback
+
+- velocity_fb
+velocity feedback
+
+The drive instance pins are arrays[]
+enable / fault are general pins, a fault on one will fault the component. enable will enable/disable all
