@@ -100,7 +100,9 @@ int    epos_add_slave (UNS8 slaveid) {
         return 0;
     
     // add the DCF data to the node
-    UNS32   errorCode;
+    UNS32               errorCode;
+    const indextable    *Object1F22;
+    
     Object1F22 = (*EPOS_drive.d->scanIndexOD)(EPOS_drive.d, 0x1F22, &errorCode);
     if (errorCode != OD_SUCCESSFUL)
         return 0;
@@ -147,21 +149,23 @@ int     epos_setup_sdo (UNS8 slaveid, int idx) {
     
     // transmit SDO
     COB_ID = 0x600 + slaveid;
+    size = sizeof(COB_ID);
     result = writeLocalDict (EPOS_drive.d,
-        0x1280 + idx, 0x01, &COB_ID, sizeof(COB_ID), 0);
+        0x1280 + idx, 0x01, &COB_ID, &size, 0);
     if (result != OD_SUCCESSFUL)
         return 0;
 
     // receive SDO
     COB_ID = 0x580 + slaveid;
     result = writeLocalDict (EPOS_drive.d,
-        0x1280 + idx, 0x02, &COB_ID, sizeof(COB_ID), 0);
+        0x1280 + idx, 0x02, &COB_ID, &size, 0);
     if (result != OD_SUCCESSFUL)
         return 0;
     
     // node ID
+    size = sizeof(slaveid);
     result = writeLocalDict (EPOS_drive.d,
-        0x1280 + idx, 0x03, &slaveid, sizeof(slaveid), 0);
+        0x1280 + idx, 0x03, &slaveid, &size, 0);
     if (result != OD_SUCCESSFUL)
         return 0;
     
@@ -188,6 +192,7 @@ int     epos_setup_rx_pdo (UNS8 slaveid, int idx) {
     
     UNS32   result;
     UNS32   COB_ID;
+    UNS32   size;
     UNS8    trans_type = 0xFF;
     UNS8    map_count = 0x00;
     
@@ -195,19 +200,22 @@ int     epos_setup_rx_pdo (UNS8 slaveid, int idx) {
 
         // the PDO params
         COB_ID = 0x80000000 + cobs[pdonr] + slaveid;
+        size = sizeof(COB_ID);
         result = writeLocalDict (EPOS_drive.d,
-            0x1400 + pdonr + (idx * EPOS_PDO_MAX), 0x01, &COB_ID, sizeof(COB_ID), 0);
+            0x1400 + pdonr + (idx * EPOS_PDO_MAX), 0x01, &COB_ID, &size, 0);
         if (result != OD_SUCCESSFUL)
             return 0;
 
+        size = sizeof(trans_type);
         result = writeLocalDict (EPOS_drive.d,
-            0x1400 + pdonr + (idx * EPOS_PDO_MAX), 0x02, &trans_type, sizeof(trans_type), 0);
+            0x1400 + pdonr + (idx * EPOS_PDO_MAX), 0x02, &trans_type, &size, 0);
         if (result != OD_SUCCESSFUL)
             return 0;
         
         // setup the PDO mapping
+        size = sizeof(map_count);
         result = writeLocalDict (EPOS_drive.d,
-            0x1600 + pdonr + (idx * EPOS_PDO_MAX), 0x00, &map_count, sizeof(map_count), 0);
+            0x1600 + pdonr + (idx * EPOS_PDO_MAX), 0x00, &map_count, &size, 0);
         if (result != OD_SUCCESSFUL)
             return 0;        
     }
@@ -237,6 +245,7 @@ int     epos_setup_tx_pdo (UNS8 slaveid, int idx) {
     
     UNS32   result;
     UNS32   COB_ID;
+    UNS32   size;
     UNS8    trans_type = 0xFF;
     UNS8    map_count = 0x00;
     UNS16   inhibit_time = 10; //(it's in 100us, 10 = 1ms)
@@ -245,24 +254,28 @@ int     epos_setup_tx_pdo (UNS8 slaveid, int idx) {
 
         // the PDO params
         COB_ID = 0x80000000 + cobs[pdonr] + slaveid;
+        size = sizeof(COB_ID);
         result = writeLocalDict (EPOS_drive.d,
-            0x1800 + pdonr + (idx * EPOS_PDO_MAX), 0x01, &COB_ID, sizeof(COB_ID), 0);
+            0x1800 + pdonr + (idx * EPOS_PDO_MAX), 0x01, &COB_ID, &size, 0);
         if (result != OD_SUCCESSFUL)
             return 0;
 
+        size = sizeof(trans_type);
         result = writeLocalDict (EPOS_drive.d,
-            0x1800 + pdonr + (idx * EPOS_PDO_MAX), 0x02, &trans_type, sizeof(trans_type), 0);
+            0x1800 + pdonr + (idx * EPOS_PDO_MAX), 0x02, &trans_type, &size, 0);
         if (result != OD_SUCCESSFUL)
             return 0;
         
+        size = sizeof(inhibit_time);
         result = writeLocalDict (EPOS_drive.d,
-            0x1800 + pdonr + (idx * EPOS_PDO_MAX), 0x03, &inhibit_time, sizeof(inhibit_time), 0);
+            0x1800 + pdonr + (idx * EPOS_PDO_MAX), 0x03, &inhibit_time, &size, 0);
         if (result != OD_SUCCESSFUL)
             return 0;
                 
         // setup the PDO mapping
+        size = sizeof(map_count);
         result = writeLocalDict (EPOS_drive.d,
-            0x1A00 + pdonr + (idx * EPOS_PDO_MAX), 0x00, &map_count, sizeof(map_count), 0);
+            0x1A00 + pdonr + (idx * EPOS_PDO_MAX), 0x00, &map_count, &size, 0);
         if (result != OD_SUCCESSFUL)
             return 0;        
     }
