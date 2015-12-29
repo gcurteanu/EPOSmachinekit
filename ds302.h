@@ -297,6 +297,9 @@ typedef struct {
 
 extern ds302_t     ds302_data;
 
+/* the clock function */
+uint64_t rtuClock();
+
 /* Initialise the DS-302 boot */
 void    ds302_init (CO_Data*);
 /* starts the DS-302 boot */
