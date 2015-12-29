@@ -344,16 +344,16 @@ int     epos_get_slave_index (UNS8 slaveid) {
 
 static int debug = 1;
 
-static void _statusWordCB (CO_Data * d, const indextable *idx, UNS8 bSubindex) {
+static UNS32 _statusWordCB (CO_Data * d, const indextable *idxtbl, UNS8 bSubindex) {
     
     // idx is the OD entry, bSubindex is the array item in it (eq. drive idx + 1)
     int     idx = bSubindex - 1;
 
     // update the state for the corresponding drive based on the status word
-    EPOS_drive.EPOS_State[idx] = (*(UNS16 *)(idx->pSubindex[bSubindex].pObject)) & 0x417F;
+    EPOS_drive.EPOS_State[idx] = (*(UNS16 *)(idxtbl->pSubindex[bSubindex].pObject)) & 0x417F;
     
     /***** NOTE: callback from PDO, NO MUTEXES! ****/
-    switch (EPOS_State) {
+    switch (EPOS_drive.EPOS_State[idx]) {
         case EPOS_START:
             if (debug) eprintf("Start\n");
             break;
