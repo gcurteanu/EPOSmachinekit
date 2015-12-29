@@ -493,7 +493,7 @@ void printBits(size_t const size, void const * const ptr)
 
 void	printStatusword () {
 
-	UNS16	sw = StatusWord;
+	UNS16	sw = StatusWord[0];
 	
 	eprintf("\nStatusWord: ");printBits (sizeof (sw), &sw);eprintf("\n");
 	UNS16 swstate = sw & 0b0100000101111111;
@@ -784,11 +784,11 @@ int main(int argc,char **argv)
 	eprintf ("EPOS ready for operation!\n");
 	eprintf ("Setting PPM params\n");
 	EnterMutex();
-	SET_BIT(ControlWord, 5); // 1 start immmediately, interrupt in progress if any. 0 finish previous first
-	CLEAR_BIT(ControlWord, 6); // 0 absolute, 1 relative
+	SET_BIT(ControlWord[0], 5); // 1 start immmediately, interrupt in progress if any. 0 finish previous first
+	CLEAR_BIT(ControlWord[0], 6); // 0 absolute, 1 relative
 	// to make the stupid thing move, you put it to 1, and then to 0 to start
 	//SET_BIT(ControlWord, 4); // 1 assumes target, 0 does not assume target
-	CLEAR_BIT(ControlWord, 8); // 0 execute, 1 halt
+	CLEAR_BIT(ControlWord[0], 8); // 0 execute, 1 halt
 #ifdef MAN_PDO
         sendPDOevent(&EPOScontrol_Data);
 #endif
@@ -805,7 +805,7 @@ int main(int argc,char **argv)
 		int newposition = i * STEP_SIZE;
 		EnterMutex();
 		//Target_Position = newposition;
-		SET_BIT(ControlWord, 4); // 1 means NEW setpoint, it's cleared in callback once ACK
+		SET_BIT(ControlWord[0], 4); // 1 means NEW setpoint, it's cleared in callback once ACK
 		Target_Position = newposition;
 #ifdef MAN_PDO
                 sendOnePDOevent(&EPOScontrol_Data, 1);
@@ -820,7 +820,7 @@ int main(int argc,char **argv)
                 int newposition = i * STEP_SIZE;
                 EnterMutex();
                 //Target_Position = newposition;
-                SET_BIT(ControlWord, 4); // 1 means NEW setpoint, it's cleared in callback once ACK
+                SET_BIT(ControlWord[0], 4); // 1 means NEW setpoint, it's cleared in callback once ACK
                 Target_Position = newposition;
 #ifdef MAN_PDO
 		sendOnePDOevent(&EPOScontrol_Data, 1);
