@@ -313,7 +313,7 @@ int     epos_setup_tx_pdo (UNS8 slaveid, int idx) {
     UNS32   result;
     UNS32   COB_ID;
     UNS32   size;
-    UNS8    trans_type = 0x00;
+    UNS8    trans_type = 0xFF;
     UNS8    map_count = 0x00;
     UNS16   inhibit_time = 10; //(it's in 100us, 10 = 1ms)
     
