@@ -84,13 +84,10 @@ int add_dcf_entry (dcfstream_t *dcf, UNS16 object, UNS8 subindex, UNS32 datasize
     dcf->dcf[cursor++] = datasize >> 16;
     dcf->dcf[cursor++] = datasize >> 24;
     
-    printf ("Adding data %08x : ", *(UNS32*)data);
     int     idx;
     for (idx = 0; idx < datasize; idx++) {
-        printf ("%02x ", datavar[idx])
         dcf->dcf[cursor++] = datavar[idx];
     }    
-    printf ("\n");
     
     //printf ("Added entry, cursor %d, had items %d\n", cursor, total_items);
     // increment count
@@ -125,9 +122,10 @@ void    display_dcf (dcfstream_t *dcf) {
         datasize = dcf->dcf[cursor++] | dcf->dcf[cursor++] << 8 | 
             dcf->dcf[cursor++] << 16 | dcf->dcf[cursor++] << 24;
             
+        data = 0;
         for (i = 0; i < datasize ; i++) {
             
-            data = data | dcf->dcf[cursor++] << (8*i);
+            data = data + (dcf->dcf[cursor++] << (8*i));
         }
         
         // we have the item, display it
@@ -328,7 +326,7 @@ int     load_dcf_set (dcfset_t *set, const char *filename) {
                 printf ("Can't add DCF entry %04x/%02x = %08x (%d)\n", idx, subidx, data, len);
                 continue;
             } else {
-                printf ("ADDED [%d] %04x/%02x = %08x (%d)\n", nodeid, idx, subidx, data, len);
+                //printf ("ADDED [%d] %04x/%02x = %08x (%d)\n", nodeid, idx, subidx, data, len);
             }
         } else {
             printf ("Found data outside of [nodeid] section\n");
