@@ -1,6 +1,8 @@
 /*
 dcf.h
 */
+#ifndef __DCF_H__
+#define __DCF_H__
 
 #include <data.h>
 
@@ -30,3 +32,5 @@ int     get_dcf_node (dcfset_t *, UNS8, dcfstream_t**);
 int     load_dcf_set (dcfset_t *, const char *);
 
 void    display_dcf_set (dcfset_t *);
+
+#endif

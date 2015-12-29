@@ -193,7 +193,7 @@ void    display_dcf_set (dcfset_t *set) {
 
 int     load_dcf_set (dcfset_t *set, const char *filename) {
     
-    if (!dcf)
+    if (!set)
         return 0;
     
     clear_dcf_set (set);

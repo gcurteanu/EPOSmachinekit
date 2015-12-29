@@ -1,6 +1,8 @@
 /*
     EPOS error table
 */
+#ifndef __EPOS_H__
+#define __EPOS_H__
 
 #include <data.h>
 
@@ -106,3 +108,5 @@ typedef struct {
 extern EPOS_drive_t EPOS_drive;
 
 int     epos_initialize_master (CO_Data * d, const char * dcf_file);
+
+#endif
