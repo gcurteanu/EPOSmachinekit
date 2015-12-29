@@ -94,23 +94,34 @@ void    display_dcf (UNS32 size, UNS8 dcfstream[]) {
         
         UNS16   idx;
         UNS8    subidx;
-        UNS32   size;
+        UNS32   datasize;
         UNS32   data;
         int     i;
         
         idx = dcfstream[cursor++] | dcfstream[cursor++] << 8;
         subidx = dcfstream[cursor++];
-        size = dcfstream[cursor++] | dcfstream[cursor++] << 8 | 
+        datasize = dcfstream[cursor++] | dcfstream[cursor++] << 8 | 
             dcfstream[cursor++] << 16 | dcfstream[cursor++] << 24;
             
-        for (i = 0; i < size ; i++) {
+        for (i = 0; i < datasize ; i++) {
             
             data = data | dcfstream[cursor++] << (8*i);
         }
         
         // we have the item, display it
         
-        eprintf ("%04x %02x (%d) %08x", idx, subidx, size, data);
+        switch (datasize) {
+            case 1:
+                eprintf ("%04x %02x (%d) %02x", idx, subidx, datasize, data);
+                break;
+            case 2:
+                eprintf ("%04x %02x (%d) %04x", idx, subidx, datasize, data);
+                break;
+            case 4:
+            default:
+                eprintf ("%04x %02x (%d) %08x", idx, subidx, datasize, data);
+        }
+        
         count++;
     }
 }
