@@ -4,6 +4,8 @@
 
 #include <data.h>
 
+#include <dcf.h>
+
 typedef struct {
     UNS16           error_code;
     const char *    message;
