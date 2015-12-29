@@ -56,12 +56,6 @@ unsigned int debug = 0;
 
 UNS8 dcfdatas[NMT_MAX_NODE_ID][DCF_MAX_SIZE];
 
-#define SET_BIT(val, bitIndex) val |= (1 << bitIndex)
-#define CLEAR_BIT(val, bitIndex) val &= ~(1 << bitIndex)
-#define TOGGLE_BIT(val, bitIndex) val ^= (1 << bitIndex)
-#define BIT_IS_SET(val, bitIndex) (val & (1 << bitIndex))
-
-
 
 //#define USE_HEARTBEAT
 #define HB_INTERVAL_MS		1000

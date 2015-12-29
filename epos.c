@@ -67,6 +67,8 @@ const char * epos_error_text (UNS16 errCode) {
 // master EPOS drive structure
 EPOS_drive_t        EPOS_drive;
 
+static void _statusWordCB (CO_Data * d, const indextable *idx, UNS8 bSubindex);
+
 /*
  * Name         : epos_add_slave
  *
@@ -304,15 +306,15 @@ int     epos_initialize_master (CO_Data * d, const char * dcf_file) {
     
     for (idx = 0; idx < MAX_EPOS_DRIVES; idx++) {
         // clean the slaves
-        epos_slaves[idx] = 0x00;
+        EPOS_drive.epos_slaves[idx] = 0x00;
         
         // clean the error data
-        slave_err[idx][0] = 0x00;
+        EPOS_drive.slave_err[idx][0] = 0x00;
 
         // set the callbacks
         
         // callback for drive status word
-        RegisterSetODentryCallBack (d, 0x5041, 0x01 + idx, _statusWordCB);
+        RegisterSetODentryCallBack (EPOS_drive.d, 0x5041, 0x01 + idx, _statusWordCB);
     }
     
     load_dcf_set (&EPOS_drive.dcf_data, dcf_file);
@@ -340,13 +342,15 @@ int     epos_get_slave_index (UNS8 slaveid) {
     return -1;
 }
 
-void    _statusWordCB (CO_Data * d, const indextable *idx, UNS8 bSubindex) {
+static int debug = 1;
+
+static void _statusWordCB (CO_Data * d, const indextable *idx, UNS8 bSubindex) {
     
     // idx is the OD entry, bSubindex is the array item in it (eq. drive idx + 1)
     int     idx = bSubindex - 1;
 
     // update the state for the corresponding drive based on the status word
-    EPOS_drive.EPOS_State[idx] = (*(UNS16 *)idx->pSubindex[bSubindex].pObject) & 0x417F;
+    EPOS_drive.EPOS_State[idx] = (*(UNS16 *)(idx->pSubindex[bSubindex].pObject)) & 0x417F;
     
     /***** NOTE: callback from PDO, NO MUTEXES! ****/
     switch (EPOS_State) {
