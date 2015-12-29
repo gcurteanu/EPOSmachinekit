@@ -720,7 +720,7 @@ int main(int argc,char **argv)
     setNodeId(&EPOScontrol_Data, 0x7F);
 
     epos_initialize_master (&EPOScontrol_Data, "dcfdata.txt");
-    display_dcf_set (&EPOS_Data.dcf_data);
+    display_dcf_set (&EPOS_drive.dcf_data);
     
     // load the DCF configuration for the master node before starting the timers and such
     ds302_load_dcf_local (&EPOScontrol_Data);

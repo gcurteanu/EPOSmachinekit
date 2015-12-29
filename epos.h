@@ -103,6 +103,6 @@ typedef struct {
 
 } EPOS_drive_t;
 
-
+extern EPOS_drive_t EPOS_drive;
 
 int     epos_initialize_master (CO_Data * d, const char * dcf_file);
