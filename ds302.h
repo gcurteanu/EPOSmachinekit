@@ -291,6 +291,8 @@ typedef struct {
         
         DECLARE_SM (BOOTSLAVE, _bootSlave[NMT_MAX_NODE_ID]);                // boot slave machines
         DECLARE_SM (BOOTMASTER, _masterBoot);                               // master boot machine
+        
+        SDOCallback_t           bootFinished;
 } ds302_t;
 
 extern ds302_t     ds302_data;

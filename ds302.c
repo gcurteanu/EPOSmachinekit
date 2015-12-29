@@ -1485,6 +1485,8 @@ void ds302_init_slaveSM (CO_Data* d, UNS8 slaveid)
     DATA_SM (ds302_data._bootSlave[slaveid]).Index1020_2 = 0x0;
 }
 
+void _ds302_boot_completed (CO_Data* d, UNS8 masterid) {};
+
 /* initialises the DS 302 structure */
 void ds302_init (CO_Data* d)
 {
@@ -1511,6 +1513,7 @@ void ds302_init (CO_Data* d)
         DATA_SM (ds302_data._bootSlave[slaveid]).Index1020_2 = 0x0;
     }
     
+    ds302_data.bootFinished = _ds302_boot_completed;
     // ready to proceed. Need to decide if we boot ON-DEMAND or we rely on boot messages
     // relying on boot messages seems to be a problem
     // we can WAIT for a boot message before starting the boot process for example
