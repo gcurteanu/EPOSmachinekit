@@ -1099,10 +1099,10 @@ int	ds302_nl_send_reset_to_non_keepalive(CO_Data* d)
             // node is in list
             if ((*(UNS32 *)Object1F81->pSubindex[nodeid].pObject & DS302_NL_DONOT_RESET) == 0) {
                 // node does not have keepalive set, send reset comm
-                eprintf ("Send reset to node id %d\n", nodeid);
+                DS302_DEBUG ("Send reset to node id %d\n", nodeid);
                 masterSendNMTstateChange (d, nodeid, NMT_Reset_Comunication);
             } else {
-                eprintf ("DO NOT send reset to node id %d, has KEEPALIVE set\n", nodeid);
+                DS302_DEBUG ("DO NOT send reset to node id %d, has KEEPALIVE set\n", nodeid);
             }
         }
     }
@@ -1182,7 +1182,7 @@ int ds302_all_mandatory_booted (CO_Data* d)
 
 void _sm_BootMaster_initial (CO_Data* d, UNS32 idx)
 {
-    eprintf ("_sm_BootMaster_initial ENTRY\n");
+    DS302_DEBUG ("_sm_BootMaster_initial ENTRY\n");
 
     if (INITIAL_SM(ds302_data._masterBoot)) {
 
@@ -1229,7 +1229,7 @@ void _sm_BootMaster_bootproc (CO_Data* d, UNS32 idx)
 {
     int	slaveid;
 
-    eprintf ("_sm_BootMaster_bootproc ENTRY (%d)\n", idx);
+    DS302_DEBUG ("_sm_BootMaster_bootproc ENTRY (%d)\n", idx);
 
     // this is called multiple times until all mandatory slaves are done
     // there is no initial at this point, it's lower in the process
@@ -1245,7 +1245,7 @@ void _sm_BootMaster_bootproc (CO_Data* d, UNS32 idx)
     if (INITIAL_SM(ds302_data._masterBoot)) {
 
         // this is the first run, so start all the state machines for the slaves in the network list
-        eprintf ("_sm_BootMaster_bootproc INITIAL\n");
+        DS302_DEBUG ("_sm_BootMaster_bootproc INITIAL\n");
 
         for (slaveid=1; slaveid<NMT_MAX_NODE_ID; slaveid++)
             if (ds302_nl_node_in_list(d, slaveid)) {
@@ -1273,7 +1273,7 @@ void _sm_BootMaster_bootproc (CO_Data* d, UNS32 idx)
     } 
 
     // additional calls
-    eprintf ("_sm_BootMaster_bootproc N+1\n");
+    DS302_DEBUG ("_sm_BootMaster_bootproc N+1\n");
 
     // process the entire state machine list, until all are done
     // if all are done, re-do the mandatory check and switch, or RAISE HELL (all machines done but NO JOY on mandatory)
