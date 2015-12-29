@@ -807,7 +807,7 @@ int main(int argc,char **argv)
 		EnterMutex();
 		//Target_Position = newposition;
 		SET_BIT(ControlWord[0], 4); // 1 means NEW setpoint, it's cleared in callback once ACK
-		Target_Position = newposition;
+		//Target_Position = newposition;
 #ifdef MAN_PDO
                 sendOnePDOevent(&EPOScontrol_Data, 1);
 #endif
@@ -822,7 +822,7 @@ int main(int argc,char **argv)
                 EnterMutex();
                 //Target_Position = newposition;
                 SET_BIT(ControlWord[0], 4); // 1 means NEW setpoint, it's cleared in callback once ACK
-                Target_Position = newposition;
+                //Target_Position = newposition;
 #ifdef MAN_PDO
 		sendOnePDOevent(&EPOScontrol_Data, 1);
 #endif
