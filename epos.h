@@ -113,5 +113,9 @@ typedef struct {
 extern EPOS_drive_t EPOS_drive;
 
 int     epos_initialize_master (CO_Data * d, const char * dcf_file);
+int     epos_setup_sdo (UNS8 slaveid, int idx);
+int     epos_setup_rx_pdo (UNS8 slaveid, int idx);
+int     epos_setup_tx_pdo (UNS8 slaveid, int idx);
+int     epos_add_slave (UNS8 slaveid);
 
 #endif
