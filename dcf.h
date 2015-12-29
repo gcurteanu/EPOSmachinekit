@@ -9,13 +9,13 @@ dcf.h
 
 typedef struct {
     UNS8    dcf[EPOS_DCF_MAX_SIZE];
-    int     size = EPOS_DCF_MAX_SIZE;
+    int     size;
     UNS8    nodeid;
 } dcfstream_t;
 
 typedef struct {
     dcfstream_t nodes[EPOS_DCF_MAX_NODES];
-    int         size = EPOS_DCF_MAX_NODES;
+    int         size;
     int         count;
 } dcfset_t;
 

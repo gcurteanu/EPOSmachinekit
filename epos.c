@@ -7,7 +7,7 @@ Main routines for the EPOS drives
 
 #include "epos.h"
 
-#include <dcf.h>
+#include "dcf.h"
 
 #define EPOS_PDO_MAX     4
 

@@ -1,5 +1,4 @@
-#include <dcf.h>
-
+#include "dcf.h"
 
 int clear_dcf (dcfstream_t *dcf) {
     
@@ -57,7 +56,7 @@ int add_dcf_entry (dcfstream_t *dcf, UNS16 object, UNS8 subindex, UNS32 datasize
         cursor += 4;
         
         // are we still in the array?
-        if ((cursor+itemsize) >= size)
+        if ((cursor+itemsize) >= dcf->size)
             return 0;
         
         cursor += itemsize;
@@ -149,7 +148,7 @@ int     get_dcf_node (dcfset_t * set, UNS8 nodeid, dcfstream_t** dcf) {
     
     for (idx = 0; idx < set->count; idx++)
         if (set->nodes[idx].nodeid = nodeid) {
-            *dcf = set->nodes[idx];
+            *dcf = &set->nodes[idx];
             return 1;
         }
         
