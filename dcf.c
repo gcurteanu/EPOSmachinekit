@@ -1,35 +1,44 @@
 #include <dcf.h>
 
 
-int clear_dcf (UNS32 size, UNS8 dcfstream[]) {
+int clear_dcf (dcfstream_t *dcf) {
     
-    if (size >= 4) {
+    if (!dcf)
+        return 0;
+    
+    if (dcf->size >= 4) {
         // clean the DCF data
-        dcfstream[0] = 0x00;
-        dcfstream[1] = 0x00;
-        dcfstream[2] = 0x00;
-        dcfstream[3] = 0x00;
-
+        dcf->dcf[0] = 0x00;
+        dcf->dcf[1] = 0x00;
+        dcf->dcf[2] = 0x00;
+        dcf->dcf[3] = 0x00;
+        dcf->nodeid = 0x00;
         return 1;
     }
     
     return 0;
 }
 
-UNS32 get_dcf_count (UNS32 size, UNS8   dcfstream[]) {
+UNS32 get_dcf_count (dcfstream_t *dcf) {
 
-    if (size < 4)
+    if (!dcf)
+       return 0;
+   
+    if (dcf->size < 4)
         return 0;
     
-    UNS32 count = dcfstream[0] | dcfstream[1]<<8 | dcfstream[2]<<16 | dcfstream[3]<<24;
+    UNS32 count = dcf->dcf[0] | dcf->dcf[1]<<8 | dcf->dcf[2]<<16 | dcf->dcf[3]<<24;
     return count;
 }
 
-int add_dcf_entry (UNS32 size, UNS8 dcfstream[], UNS16 object, UNS8 subindex, UNS32 datasize, void * data)
+int add_dcf_entry (dcfstream_t *dcf, UNS16 object, UNS8 subindex, UNS32 datasize, void * data)
 {
     int cursor = 4;
     UNS32 count = 0;
-    UNS32 total_items = get_dcf_count (size, dcfstream);
+    UNS32 total_items = get_dcf_count (dcf);
+    
+    if (!dcf)
+        return 0;
     
     // go to the DCF end
     while (count < total_items) {
@@ -39,11 +48,11 @@ int add_dcf_entry (UNS32 size, UNS8 dcfstream[], UNS16 object, UNS8 subindex, UN
         cursor+=3;
         
         // are we still in the array?
-        if ((cursor+4) >= size)
+        if ((cursor+4) >= dcf->size)
             return 0;
         
-        UNS32   itemsize = dcfstream[cursor+0] | dcfstream[cursor+1]<<8 | 
-            dcfstream[cursor+2]<<16 | dcfstream[cursor+3]<<24;
+        UNS32   itemsize = dcf->dcf[cursor+0] | dcf->dcf[cursor+1]<<8 | 
+            dcf->dcf[cursor+2]<<16 | dcf->dcf[cursor+3]<<24;
             
         cursor += 4;
         
@@ -59,36 +68,39 @@ int add_dcf_entry (UNS32 size, UNS8 dcfstream[], UNS16 object, UNS8 subindex, UN
     
     // we have the cursor at the end of the stream
     // verify that we have space
-    if ((cursor + 7 + count) >= size)
+    if ((cursor + 7 + count) >= dcf->size)
         return 0;
     
-    dcfstream[cursor++] = object;
-    dcfstream[cursor++] = object >> 8;
-    dcfstream[cursor++] = subindex;
-    dcfstream[cursor++] = datasize;
-    dcfstream[cursor++] = datasize >> 8;
-    dcfstream[cursor++] = datasize >> 16;
-    dcfstream[cursor++] = datasize >> 24;
+    dcf->dcf[cursor++] = object;
+    dcf->dcf[cursor++] = object >> 8;
+    dcf->dcf[cursor++] = subindex;
+    dcf->dcf[cursor++] = datasize;
+    dcf->dcf[cursor++] = datasize >> 8;
+    dcf->dcf[cursor++] = datasize >> 16;
+    dcf->dcf[cursor++] = datasize >> 24;
     
     int     idx;
     for (idx = 0; idx < datasize; idx++)
-        dcfstream[cursor++] = ((UNS8 *)data)[idx];
+        dcf->dcf[cursor++] = ((UNS8 *)data)[idx];
     
     // increment count
     total_items++;
-    dcfstream[0] = total_items;
-    dcfstream[0] = total_items >> 8;
-    dcfstream[0] = total_items >> 16;
-    dcfstream[0] = total_items >> 24;
+    dcf->dcf[0] = total_items;
+    dcf->dcf[0] = total_items >> 8;
+    dcf->dcf[0] = total_items >> 16;
+    dcf->dcf[0] = total_items >> 24;
     
     return 1;
 }
 
-void    display_dcf (UNS32 size, UNS8 dcfstream[]) {
+void    display_dcf (dcfstream_t *dcf) {
     
-    UNS32   total_items = get_dcf_count (size, dcfstream);
+    UNS32   total_items = get_dcf_count (dcf);
     UNS32   count;
     int     cursor = 4;
+    
+    if (!dcf)
+        return;
     
     while (count < total_items) {
         
@@ -98,14 +110,14 @@ void    display_dcf (UNS32 size, UNS8 dcfstream[]) {
         UNS32   data;
         int     i;
         
-        idx = dcfstream[cursor++] | dcfstream[cursor++] << 8;
-        subidx = dcfstream[cursor++];
-        datasize = dcfstream[cursor++] | dcfstream[cursor++] << 8 | 
-            dcfstream[cursor++] << 16 | dcfstream[cursor++] << 24;
+        idx = dcf->dcf[cursor++] | dcf->dcf[cursor++] << 8;
+        subidx = dcf->dcf[cursor++];
+        datasize = dcf->dcf[cursor++] | dcf->dcf[cursor++] << 8 | 
+            dcf->dcf[cursor++] << 16 | dcf->dcf[cursor++] << 24;
             
         for (i = 0; i < datasize ; i++) {
             
-            data = data | dcfstream[cursor++] << (8*i);
+            data = data | dcf->dcf[cursor++] << (8*i);
         }
         
         // we have the item, display it
@@ -124,4 +136,22 @@ void    display_dcf (UNS32 size, UNS8 dcfstream[]) {
         
         count++;
     }
+}
+
+int     get_dcf_node (dcfset_t * set, UNS8 nodeid, dcfstream_t** dcf) {
+    
+    if (!set || !dcf || nodeid < 1)
+        return 0;
+    
+    int idx;
+    
+    *dcf = NULL;
+    
+    for (idx = 0; idx < set->count; idx++)
+        if (set->nodes[idx].nodeid = nodeid) {
+            *dcf = set->nodes[idx];
+            return 1;
+        }
+        
+    return 0;
 }

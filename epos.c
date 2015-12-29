@@ -108,8 +108,12 @@ int    epos_add_slave (UNS8 slaveid) {
     if (slaveid >= Object1F22->bSubCount)
         return 0;
 
-    Object1F22->pSubindex[slaveid].pObject = dcf_data[EPOS_drive.epos_slave_count];
-    Object1F22->pSubindex[slaveid].size = EPOS_DCF_MAX_SIZE;
+    dcfstream_t *nodedcf;
+    if (!get_dcf_node (&EPOS_drive.dcf_data, slaveid, &nodedcf))
+        return 0;
+    
+    Object1F22->pSubindex[slaveid].pObject = nodedcf->dcf;
+    Object1F22->pSubindex[slaveid].size = nodedcf->size;
     
     // add the slave to the Network List (1F81)???
     // add the slave to the heartbeat???
