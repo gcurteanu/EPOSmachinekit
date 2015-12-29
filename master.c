@@ -704,7 +704,7 @@ int main(int argc,char **argv)
           help();
           exit(1);
         }
-        nodeid = optarg;
+        snodeid = optarg;
 		sscanf(snodeid,"%x",&slavenodeid);
         break;
       default:
@@ -782,7 +782,7 @@ int main(int argc,char **argv)
 
 	eprintf ("EPOS loop started, waiting for enabled!\n");
 
-	while (EPOS_State != EPOS_OPEN) sleep(1);
+	//while (EPOS_State != EPOS_OPEN) sleep(1);
 
 	eprintf ("EPOS ready for operation!\n");
 	eprintf ("Setting PPM params\n");
