@@ -4,8 +4,8 @@
 #include <time.h>
 #include "ds302.h"
 
-//#define DS302_DEBUG(...)
-#define DS302_DEBUG(...) eprintf(__VA_ARGS__)
+#define DS302_DEBUG(...)
+//#define DS302_DEBUG(...) eprintf(__VA_ARGS__)
 
 // max time in us for a boot
 #define NODE_BOOT_TIME 10*1000*1000
