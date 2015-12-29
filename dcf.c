@@ -1,3 +1,4 @@
+#include <stdlib.h>
 #include "dcf.h"
 
 #define eprintf(...) printf(__VA_ARGS__)
@@ -245,7 +246,7 @@ int     load_dcf_set (dcfset_t *set, const char *filename) {
         if (line[0] == '#' || line[0] == '/')
             continue;
         
-        if (line[0] = '[') {
+        if (line[0] == '[') {
             // new section
             token = strtok (line, " \t\r\n[]");
             if (!token) {
@@ -253,7 +254,7 @@ int     load_dcf_set (dcfset_t *set, const char *filename) {
                 continue;
             }
             
-            nodeid = strtod (token, &errcheck);
+            nodeid = strtol (token, &errcheck, 0);
             if (token == errcheck || errcheck[0] != 0x00) {
                 printf("Can not convert <%s> to index number, skipping line\n", token);
                 continue;
@@ -282,7 +283,7 @@ int     load_dcf_set (dcfset_t *set, const char *filename) {
         if (!token)
             continue;
         
-        idx = strtod (token, &errcheck);
+        idx = strtol (token, &errcheck, 0);
         if (token == errcheck || errcheck[0] != 0x00) {
             printf("Can not convert <%s> to index number, skipping line\n", token);
             continue;
@@ -291,7 +292,7 @@ int     load_dcf_set (dcfset_t *set, const char *filename) {
         token = strtok (NULL, " \t\r\n");
         if (!token)
             continue;
-        subidx = strtod (token, &errcheck);
+        subidx = strtol (token, &errcheck, 0);
         if (token == errcheck || errcheck[0] != 0x00) {
             printf("Can not convert <%s> to subindex number, skipping line\n", token);
             continue;
@@ -300,7 +301,7 @@ int     load_dcf_set (dcfset_t *set, const char *filename) {
         token = strtok (NULL, " \t\r\n");
         if (!token)
             continue;
-        len = strtod (token, &errcheck);
+        len = strtol (token, &errcheck, 0);
         if (token == errcheck || errcheck[0] != 0x00) {
             printf("Can not convert <%s> to length, skipping line\n", token);
             continue;
@@ -309,7 +310,7 @@ int     load_dcf_set (dcfset_t *set, const char *filename) {
         token = strtok (NULL, " \t\r\n");
         if (!token)
             continue;
-        data = strtod (token, &errcheck);
+        data = strtol (token, &errcheck, 0);
         if (token == errcheck || errcheck[0] != 0x00) {
             printf("Can not convert <%s> to data, skipping line\n", token);
             continue;
