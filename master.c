@@ -98,64 +98,7 @@ void TestMaster_initialisation(CO_Data* d)
 
 static int init_step = 0;
 
-/*Froward declaration*/
-static void ConfigureSlaveNode(CO_Data* d, UNS8 nodeId);
-
-/**/
-static void CheckSDOAndContinue(CO_Data* d, UNS8 nodeId)
-{
-	UNS32 abortCode;
-
-	if(getWriteResultNetworkDict (d, nodeId, &abortCode) != SDO_FINISHED)
-		eprintf("Master : Failed in initializing slave %2.2x, step %d, AbortCode :%4.4x \n", nodeId, init_step, abortCode);
-
-	/* Finalise last SDO transfer with this node */
-	closeSDOtransfer(&EPOScontrol_Data, nodeId, SDO_CLIENT);
-
-	ConfigureSlaveNode(d, nodeId);
-}
-
-
-
-
-void WiteSDOValue (CO_Data* d, UNS8 nodeId, UNS16 index, UNS8 subIndex, UNS32 count, UNS8 dataType, void *data)
-{
-        UNS8 res = writeNetworkDict (d, /*CO_Data* d*/
-        	nodeId, /*UNS8 nodeId*/
-                index, /*UNS16 index*/
-                subIndex, /*UNS8 subindex*/
-                count, /*UNS8 count*/
-                0, /*UNS8 dataType*/
-                data,/*void *data*/
-        0); /* use block mode */
-}
-
-
-/********************************************************
- * ConfigureSlaveNode is responsible to
- *  - setup slave TPDO 1 transmit time
- *  - setup slave TPDO 2 transmit time
- *  - setup slave Heartbeat Producer time
- *  - switch to operational mode
- *  - send NMT to slave
- ********************************************************
- * This an example of :
- * Network Dictionary Access (SDO) with Callback 
- * Slave node state change request (NMT) 
- ********************************************************
- * This is called first by TestMaster_preOperational
- * then it called again each time a SDO exchange is
- * finished.
- ********************************************************/
-static void ConfigureSlaveNode(CO_Data* d, UNS8 nodeId)
-{
-	UNS8 res;
-	eprintf("Master : ConfigureSlaveNode %2.2x\n", nodeId);
-	printf("nodeid slave=%x\n",nodeId);
-        printf("init step=%d\n", init_step);
-	switch(++init_step){
-		case 1:	
-		{
+#ifdef _NOT_USED_
 #ifdef USE_HEARTBEAT			
 			UNS16 Heartbeat_Producer_Time = HB_INTERVAL_MS; 
 			eprintf("Master : set slave %2.2x heartbeat producer time to %d\n", nodeId, Heartbeat_Producer_Time);
@@ -184,86 +127,6 @@ static void ConfigureSlaveNode(CO_Data* d, UNS8 nodeId)
                                         CheckSDOAndContinue, /*SDOCallback_t Callback*/
                         0); /* use block mode */   
 #endif
-		}			
-		break;
-
-		case 2:
-		{
-                        Profile_Velocity = PROFILE_VELOCITY;
-                        eprintf("Master : set profile velocity\n");
-                        res = writeNetworkDictCallBack (d, /*CO_Data* d*/
-                                        /**TestSlave_Data.bDeviceNodeId, UNS8 nodeId*/
-                                        nodeId, /*UNS8 nodeId*/
-                                        0x6081, /*UNS16 index*/
-                                        0x00, /*UNS8 subindex*/
-                                        4, /*UNS8 count*/
-                                        0, /*UNS8 dataType*/
-                                        &Profile_Velocity,/*void *data*/
-                                        CheckSDOAndContinue, /*SDOCallback_t Callback*/
-                        0); /* use block mode */
-		}
-		break;
-
-                case 3: 
-                {
-                        Profile_Acceleration = PROFILE_ACCELERATION;      
-                        eprintf("Master : set profile acceleration\n");     
-                        res = writeNetworkDictCallBack (d, /*CO_Data* d*/
-                                        /**TestSlave_Data.bDeviceNodeId, UNS8 nodeId*/
-                                        nodeId, /*UNS8 nodeId*/
-                                        0x6083, /*UNS16 index*/
-                                        0x00, /*UNS8 subindex*/
-                                        4, /*UNS8 count*/
-                                        0, /*UNS8 dataType*/
-                                        &Profile_Acceleration,/*void *data*/
-                                        CheckSDOAndContinue, /*SDOCallback_t Callback*/
-                        0); /* use block mode */
-                }
-                break;
-
-                case 4:
-                {
-                        Profile_Deceleration = PROFILE_ACCELERATION;      
-                        eprintf("Master : set profile deceleration\n");     
-                        res = writeNetworkDictCallBack (d, /*CO_Data* d*/
-                                        /**TestSlave_Data.bDeviceNodeId, UNS8 nodeId*/
-                                        nodeId, /*UNS8 nodeId*/
-                                        0x6084, /*UNS16 index*/
-                                        0x00, /*UNS8 subindex*/
-                                        4, /*UNS8 count*/
-                                        0, /*UNS8 dataType*/
-                                        &Profile_Deceleration,/*void *data*/
-                                        CheckSDOAndContinue, /*SDOCallback_t Callback*/
-                        0); /* use block mode */
-                }
-                break;
-
-                case 5:
-                {     
-                        Motion_ProfileType = 1;
-                        eprintf("Master : set profile type\n");     
-                        res = writeNetworkDictCallBack (d, /*CO_Data* d*/
-                                        /**TestSlave_Data.bDeviceNodeId, UNS8 nodeId*/
-                                        nodeId, /*UNS8 nodeId*/         
-                                        0x6086, /*UNS16 index*/          
-                                        0x00, /*UNS8 subindex*/
-                                        2, /*UNS8 count*/      
-                                        0, /*UNS8 dataType*/   
-                                        &Motion_ProfileType,/*void *data*/
-                                        CheckSDOAndContinue, /*SDOCallback_t Callback*/
-                        0); /* use block mode */            
-                }
-                break;
-
-		case 6:
-			// um?
-			eprintf ("WHY THE HELL AM I HERE?\n");
-			/* Put the master in operational mode */
-			setState(d, Operational);
-			  
-			eprintf ("BOOTING UP NODE %02x\n", nodeId);
-			/* Ask slave node to go in operational mode */
-			masterSendNMTstateChange (d, nodeId, NMT_Start_Node);
 
 #ifdef USE_HEARTBEAT
 			// Add the node to the heartbeat proto
@@ -279,14 +142,12 @@ static void ConfigureSlaveNode(CO_Data* d, UNS8 nodeId)
                         	&size_hb, /* UNS8 * pExpectedSize*/
                         	RW);  /* UNS8 checkAccess */
 #endif
-	}
-			
-}
+#endif
 
 void TestMaster_preOperational(CO_Data* d)
 {
 
-	eprintf("TestMaster_preOperational\n");
+    eprintf("TestMaster_preOperational\n");
 /*
 	masterSendNMTstateChange (&EPOScontrol_Data, slavenodeid, NMT_Reset_Node);
 */
@@ -299,43 +160,32 @@ void TestMaster_preOperational(CO_Data* d)
 */
 
 #ifdef USE_SYNC
-	UNS32 interval = SYNC_INTERVAL_MS * 1000;
-	UNS32 size = sizeof (interval);
+    UNS32 interval = SYNC_INTERVAL_MS * 1000;
+    UNS32 size = sizeof (interval);
 
-        writeLocalDict( &EPOScontrol_Data, /*CO_Data* d*/
-                        0x1006, /*UNS16 index*/
-                        0x00, /*UNS8 subind*/ 
-                        &interval, /*void * pSourceData,*/ 
-                        &size, /* UNS8 * pExpectedSize*/
-                        RW);  /* UNS8 checkAccess */
+    writeLocalDict( &EPOScontrol_Data, /*CO_Data* d*/
+                    0x1006, /*UNS16 index*/
+                    0x00, /*UNS8 subind*/ 
+                    &interval, /*void * pSourceData,*/ 
+                    &size, /* UNS8 * pExpectedSize*/
+                    RW);  /* UNS8 checkAccess */
 
-	startSYNC(&EPOScontrol_Data);
+    startSYNC(&EPOScontrol_Data);
 #endif
 }
 
 void TestMaster_operational(CO_Data* d)
 {
-	eprintf("NMT: TestMaster_operational\n");
-	// dummy operational forewah!
-	//while (1);
+    eprintf("NMT: TestMaster_operational\n");
 }
 
 void TestMaster_stopped(CO_Data* d)
 {
-	eprintf("NMT: TestMaster_stopped\n");
+    eprintf("NMT: TestMaster_stopped\n");
 }
 
 void TestMaster_post_SlaveBootup(CO_Data* d, UNS8 SlaveID) {
-	eprintf ("NMT: TestMaster_post_SlaveBootup : %02x\n", SlaveID);
-
-/*
-	if (bootup) {
-		eprintf("Configuring the slave %d\n", SlaveID);
-                //ConfigureSlaveNode(&EPOScontrol_Data, SlaveID);
-
-		check_and_start_node(d, SlaveID);
-	}
-*/
+    eprintf ("NMT: TestMaster_post_SlaveBootup : %02x\n", SlaveID);
 
     /*if (ds302_status(d) == BootCompleted) {
         // a post-boot slave came up. Well, configure it if able?
@@ -346,17 +196,17 @@ void TestMaster_post_SlaveBootup(CO_Data* d, UNS8 SlaveID) {
 
 void TestMaster_post_SlaveStateChange(CO_Data* d, UNS8 nodeId, e_nodeState newNodeState)
 {
-	eprintf ("NMT: TestMaster_post_SlaveStateChange : %02x -> %04x\n", nodeId, newNodeState);
+    eprintf ("NMT: TestMaster_post_SlaveStateChange : %02x -> %04x\n", nodeId, newNodeState);
 }
 
 void TestMaster_post_sync(CO_Data* d)
 {
-	if (debug) eprintf("TestMaster_post_SYNC\n");
+    if (debug) eprintf("TestMaster_post_SYNC\n");
 }
 
 void TestMaster_post_TPDO(CO_Data* d)
 {
-	if (debug) eprintf("TestMaster_post_TPDO\n");	
+    if (debug) eprintf("TestMaster_post_TPDO\n");	
 }
 
 void TestMaster_post_emcy (CO_Data* d, UNS8 nodeID, UNS16 errCode, UNS8 errReg, const UNS8 errSpec[5])
@@ -458,24 +308,24 @@ void help(void)
 /***************************  INIT  *****************************************/
 void InitNodes(CO_Data* d, UNS32 id)
 {
-	/****************************** INITIALISATION MASTER *******************************/
-	if(MasterBoard.baudrate){
-		/* Defining the node Id */
-		// don't set node ID in masters
-		//setNodeId(&EPOScontrol_Data, 0x7F);
+    /****************************** INITIALISATION MASTER *******************************/
+    if(MasterBoard.baudrate){
+        /* Defining the node Id */
+        // don't set node ID in masters
+        //setNodeId(&EPOScontrol_Data, 0x7F);
 
-		/* init */
-		setState(&EPOScontrol_Data, Initialisation);
-	}
+        /* init */
+        setState(&EPOScontrol_Data, Initialisation);
+    }
 }
 
 /***************************  EXIT  *****************************************/
 void Exit(CO_Data* d, UNS32 id)
 {
-	masterSendNMTstateChange(&EPOScontrol_Data, 0x7F, NMT_Reset_Node);
+    masterSendNMTstateChange(&EPOScontrol_Data, 0x7F, NMT_Reset_Node);
 
-    	//Stop master
-	setState(&EPOScontrol_Data, Stopped);
+    //Stop master
+    setState(&EPOScontrol_Data, Stopped);
 }
 
 
@@ -496,160 +346,15 @@ void printBits(size_t const size, void const * const ptr)
     }
 }
 
-void	printStatusword () {
+void    printStatusword () {
 
-	UNS16	sw = StatusWord[0];
-	
-	eprintf("\nStatusWord: ");printBits (sizeof (sw), &sw);eprintf("\n");
-	UNS16 swstate = sw & 0b0100000101111111;
-	eprintf("State:      ");printBits (sizeof (swstate), &swstate);eprintf("\n");
+    UNS16	sw = StatusWord[0];
 
-	eprintf ("Status mach END\n\n");
-}
+    eprintf("\nStatusWord: ");printBits (sizeof (sw), &sw);eprintf("\n");
+    UNS16 swstate = sw & 0b0100000101111111;
+    eprintf("State:      ");printBits (sizeof (swstate), &swstate);eprintf("\n");
 
-extern subindex EPOScontrol_Index1F22[];
-
-void setup_dcf(void)
-{
-    uint8_t subidx;
-    uint8_t nbr_subidx = *(uint8_t *)EPOScontrol_Index1F22[0].pObject;
-    printf("setup_dcf : %u sub indexes to set\n", nbr_subidx);
-
-    for (subidx = 0; subidx < nbr_subidx; subidx++) {
-        // zero out the data
-        dcfdatas[subidx][0] = 0x00;
-        dcfdatas[subidx][1] = 0x00;
-        dcfdatas[subidx][2] = 0x00;
-        dcfdatas[subidx][3] = 0x00;
-    }
-
-    dcf_read_in_file(DEVICE_DICT_NAME, dcfdatas);
-    dcf_data_display(dcfdatas);
-    for(subidx = 0 ; subidx < nbr_subidx ; subidx++){
-        EPOScontrol_Index1F22[subidx + 1].pObject = dcfdatas[subidx];
-        EPOScontrol_Index1F22[subidx + 1].size = DCF_MAX_SIZE;
-    }
-}
-
-
-/*
- Sets the local dict for slaveID
-*/
-void setup_local_params (UNS8 slaveID)
-{
-
-	int	idx = slaveID - 1;
-/*
- Set the client SDO values on the proper index
-*/
-	UNS32	sdo_rx = 0x580 + slaveID;
-	UNS32	sdo_tx = 0x600 + slaveID;
-	UNS32	size = sizeof (UNS32);
-
-	// write TX SDO
-	writeLocalDict( &EPOScontrol_Data, /*CO_Data* d*/
-		0x1280 + idx, /*UNS16 index*/
-		0x01, /*UNS8 subind*/
-		&sdo_tx, /*void * pSourceData,*/       
-		&size, /* UNS8 * pExpectedSize*/      
-		RW);  /* UNS8 checkAccess */
-
-	// write RX SDO
-        writeLocalDict( &EPOScontrol_Data, /*CO_Data* d*/
-                0x1280 + idx, /*UNS16 index*/        
-                0x02, /*UNS8 subind*/        
-                &sdo_rx, /*void * pSourceData,*/             
-                &size, /* UNS8 * pExpectedSize*/      
-                RW);  /* UNS8 checkAccess */
-
-	// write slave ID
-	size = sizeof (slaveID);
-        writeLocalDict( &EPOScontrol_Data, /*CO_Data* d*/
-                0x1280 + idx, /*UNS16 index*/        
-                0x03, /*UNS8 subind*/        
-                &slaveID, /*void * pSourceData,*/             
-                &size, /* UNS8 * pExpectedSize*/      
-                RW);  /* UNS8 checkAccess */	
-
-/*
- Set the RxPDOs and TxPDOs on the proper index
-*/
-	// we reserve 4 PDOs for each slave for EPOS, that's the max supported by device
-	int	pdo_idx = idx * 4;
-
-	// receive PDOs
-
-	UNS32	rxpdo_id = 0x180 + slaveID;
-	size = sizeof (UNS32);
-        writeLocalDict( &EPOScontrol_Data, /*CO_Data* d*/
-                0x1400 + pdo_idx + 0, /*UNS16 index*/
-                0x01, /*UNS8 subind*/        
-                &rxpdo_id, /*void * pSourceData,*/             
-                &size, /* UNS8 * pExpectedSize*/      
-                RW);  /* UNS8 checkAccess */    
-
-        rxpdo_id = 0x280 + slaveID;
-        size = sizeof (UNS32);
-        writeLocalDict( &EPOScontrol_Data, /*CO_Data* d*/
-                0x1400 + pdo_idx + 1, /*UNS16 index*/          
-                0x01, /*UNS8 subind*/        
-                &rxpdo_id, /*void * pSourceData,*/             
-                &size, /* UNS8 * pExpectedSize*/      
-                RW);  /* UNS8 checkAccess */    
-
-        rxpdo_id = 0x380 + slaveID;
-        size = sizeof (UNS32);
-        writeLocalDict( &EPOScontrol_Data, /*CO_Data* d*/
-                0x1400 + pdo_idx + 2, /*UNS16 index*/          
-                0x01, /*UNS8 subind*/        
-                &rxpdo_id, /*void * pSourceData,*/             
-                &size, /* UNS8 * pExpectedSize*/      
-                RW);  /* UNS8 checkAccess */    
-
-        rxpdo_id = 0x480 + slaveID;
-        size = sizeof (UNS32);
-        writeLocalDict( &EPOScontrol_Data, /*CO_Data* d*/
-                0x1400 + pdo_idx + 3, /*UNS16 index*/          
-                0x01, /*UNS8 subind*/        
-                &rxpdo_id, /*void * pSourceData,*/             
-                &size, /* UNS8 * pExpectedSize*/      
-                RW);  /* UNS8 checkAccess */    
-
-	// transmit PDOs
-
-        UNS32   txpdo_id = 0x200 + slaveID;
-	UNS8	trans_type = 0xFF;
-        size = sizeof (UNS32);               
-        writeLocalDict( &EPOScontrol_Data, /*CO_Data* d*/    
-                0x1800 + pdo_idx + 0, /*UNS16 index*/ 
-                0x01, /*UNS8 subind*/        
-                &txpdo_id, /*void * pSourceData,*/             
-                &size, /* UNS8 * pExpectedSize*/      
-                RW);  /* UNS8 checkAccess */
-	size = sizeof (UNS8);
-        writeLocalDict( &EPOScontrol_Data, /*CO_Data* d*/    
-                0x1800 + pdo_idx + 0, /*UNS16 index*/ 
-                0x02, /*UNS8 subind*/        
-                &trans_type, /*void * pSourceData,*/             
-                &size, /* UNS8 * pExpectedSize*/      
-                RW);  /* UNS8 checkAccess */    	
-
-
-        txpdo_id = 0x300 + slaveID;
-        size = sizeof (UNS32);               
-        writeLocalDict( &EPOScontrol_Data, /*CO_Data* d*/    
-                0x1800 + pdo_idx + 1, /*UNS16 index*/ 
-                0x01, /*UNS8 subind*/        
-                &txpdo_id, /*void * pSourceData,*/             
-                &size, /* UNS8 * pExpectedSize*/      
-                RW);  /* UNS8 checkAccess */    
-        size = sizeof (UNS8);
-        writeLocalDict( &EPOScontrol_Data, /*CO_Data* d*/    
-                0x1800 + pdo_idx + 1, /*UNS16 index*/ 
-                0x02, /*UNS8 subind*/        
-                &trans_type, /*void * pSourceData,*/             
-                &size, /* UNS8 * pExpectedSize*/      
-                RW);  /* UNS8 checkAccess */     
+    eprintf ("Status mach END\n\n");
 }
 
 void timer_play(CO_Data* d, UNS32 id)
@@ -734,30 +439,22 @@ int main(int argc,char **argv)
 
 #ifndef NOT_USE_DYNAMIC_LOADING
 	LoadCanDriver(LibraryPath);
-#endif		
-
-	//ds302_nl_keepalive_nodes_present(&EPOScontrol_Data);
-
-	//sleep(60);
+#endif
 
 	EPOScontrol_Data.heartbeatError = TestMaster_heartbeatError;
 	EPOScontrol_Data.initialisation = TestMaster_initialisation;
 	EPOScontrol_Data.preOperational = TestMaster_preOperational;
 	EPOScontrol_Data.operational = TestMaster_operational;
 	EPOScontrol_Data.stopped = TestMaster_stopped;
-	EPOScontrol_Data.post_TPDO = TestMaster_post_TPDO;
+	//EPOScontrol_Data.post_TPDO = TestMaster_post_TPDO;
 	// SYNC
-	EPOScontrol_Data.post_sync = TestMaster_post_sync;
+	//EPOScontrol_Data.post_sync = TestMaster_post_sync;
     
     // The error control routines only get into action after the ds302 boot
 	EPOScontrol_Data.post_SlaveBootup = TestMaster_post_SlaveBootup;
 	EPOScontrol_Data.post_SlaveStateChange = TestMaster_post_SlaveStateChange;
 	// EMCY
 	EPOScontrol_Data.post_emcy = TestMaster_post_emcy;
-
-	// Register Call My Backs
-	// Call My Back 1 : do the state machine for StatusWord
-	//RegisterSetODentryCallBack (&EPOScontrol_Data, 0x4001, 0x00, StatusWordCallback);
 	
 	if(!canOpen(&MasterBoard,&EPOScontrol_Data)){
 		eprintf("Cannot open Master Board\n");
@@ -770,13 +467,14 @@ int main(int argc,char **argv)
 	/* doing the boot process in the MAIN loop */
 	
     ds302_init (&EPOScontrol_Data);
-    ds302_setHeartbeat (&EPOScontrol_Data, 0x01, 1500);
-
     OperationMode[0] = -1;
 
 	EnterMutex();
 	ds302_start (&EPOScontrol_Data);
 	LeaveMutex();
+
+    ds302_setHeartbeat (&EPOScontrol_Data, 0x01, 100);
+
 
 	// timer play
 	// MS_TO_TIMEVAL(ms) or US_TO_TIMEVAL(us) to create the timevalentries
@@ -791,6 +489,7 @@ int main(int argc,char **argv)
 
 	eprintf ("EPOS ready for operation!\n");
 	eprintf ("Setting PPM params\n");
+#ifdef _NOT_USED_
 	EnterMutex();
 	SET_BIT(ControlWord[0], 5); // 1 start immmediately, interrupt in progress if any. 0 finish previous first
 	CLEAR_BIT(ControlWord[0], 6); // 0 absolute, 1 relative
@@ -802,6 +501,7 @@ int main(int argc,char **argv)
 #endif
 	LeaveMutex();
 	sleep(2);
+#endif
 
 #define CYCLES		1000
 #define STEP_SIZE	20
@@ -817,7 +517,7 @@ int main(int argc,char **argv)
 		//Target_Position = newposition;
         PositionDemandValue[0] = newposition;        
 #ifdef MAN_PDO
-                sendOnePDOevent(&EPOScontrol_Data, 1);
+        sendOnePDOevent(&EPOScontrol_Data, 1);
 #endif
 		LeaveMutex();
 		eprintf ("Executing move...\n");
@@ -875,5 +575,3 @@ fail_master:
 	TimerCleanup();
   	return 0;
 }
-
-

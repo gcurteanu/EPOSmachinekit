@@ -564,6 +564,7 @@ static UNS32 _statusWordCB (CO_Data * d, const indextable *idxtbl, UNS8 bSubinde
 
     // do the stupid assuming of position, and execution
     // if the set point ack is SET, then CLEAR the new set point flag
+/*
     if(BIT_IS_SET(StatusWord[idx], 12)) {
         if (BIT_IS_SET(ControlWord[idx], 4)) {
             CLEAR_BIT(ControlWord[idx], 4);
@@ -572,6 +573,6 @@ static UNS32 _statusWordCB (CO_Data * d, const indextable *idxtbl, UNS8 bSubinde
             eprintf ("What the FUCKING hell???\n");
         }
     }
-    
+*/    
     sendPDOevent(d);
 }
