@@ -167,7 +167,7 @@ int     add_dcf_node (dcfset_t * set, UNS8 nodeid, dcfstream_t** dcf) {
     *dcf = NULL;
     
     if (set->count < set->size) {
-        clear_dcf (set->nodes[set->count]);
+        clear_dcf (&set->nodes[set->count]);
         set->nodes[set->count].nodeid = nodeid;
         *dcf = &set->nodes[set->count];
         set->count++;
