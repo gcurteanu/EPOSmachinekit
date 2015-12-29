@@ -1258,10 +1258,8 @@ void _sm_BootMaster_bootproc (CO_Data* d, UNS32 idx)
                 //SM_DATA(i,start_time) = rtuClock();
                 DATA_SM(ds302_data._bootSlave[slaveid]).bootStart = rtuClock();
                 
-                //EnterMutex();
                 //SM_RUN_MACHINE(d, i);
                 START_SM(ds302_data._bootSlave[slaveid], d, slaveid);
-                //LeaveMutex();
             } else {
                 
                 // it's unused based on state, BootUnused.
@@ -1373,9 +1371,7 @@ void _sm_BootMaster_bootproc (CO_Data* d, UNS32 idx)
         //DS302_DEBUG("BM: not all done, waiting 100ms\n");
         // set alarm for 100ms for this function
         //DS302_DEBUG("_sm_BootMaster_bootproc ALARM SET to %d\n", ++idx);
-        EnterMutex();
         SetAlarm (d, ++idx, _sm_BootMaster_bootproc, MS_TO_TIMEVAL(100), 0);
-        LeaveMutex();
     }
 }
 
@@ -1415,9 +1411,7 @@ void _sm_BootMaster_operwait (CO_Data* d, UNS32 idx)
     }
 
     DS302_DEBUG("_sm_BootMaster_bootproc ALARM SET to %d\n", ++idx);
-    EnterMutex();
     SetAlarm (d, idx, _sm_BootMaster_bootproc, MS_TO_TIMEVAL(100), 0);
-    LeaveMutex();
 }
 
 void _sm_BootMaster_slavestart (CO_Data* d, UNS32 idx)
