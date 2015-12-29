@@ -134,12 +134,6 @@ const char* _sm_BootSlave_CodeToText[] = {
     "O: serial number (0x1018) did not match expected",
 };
 
-static int sleep_ms ( unsigned long ms )
-{
-    if ( ms >= 1000 ) ms = 1000;
-    return usleep ( ms * 1000 );
-}
-
 void _sm_BootSlave_initial(CO_Data* d, UNS8 nodeid)
 {
     // dummy checking for 0x1F81 bit 0
