@@ -770,7 +770,9 @@ int main(int argc,char **argv)
 	/* doing the boot process in the MAIN loop */
 	
     ds302_init (&EPOScontrol_Data);
-    ds302_setHeartbeat (&EPOScontrol_Data, 0x01, 1200);
+    ds302_setHeartbeat (&EPOScontrol_Data, 0x01, 1500);
+
+    OperationMode[0] = -1;
 
 	EnterMutex();
 	ds302_start (&EPOScontrol_Data);
@@ -785,7 +787,7 @@ int main(int argc,char **argv)
 
 	eprintf ("EPOS loop started, waiting for enabled!\n");
 
-	//while (EPOS_State != EPOS_OPEN) sleep(1);
+	while (ds302_status(&EPOScontrol_Data) != BootCompleted) sleep(1);
 
 	eprintf ("EPOS ready for operation!\n");
 	eprintf ("Setting PPM params\n");
@@ -801,9 +803,9 @@ int main(int argc,char **argv)
 	LeaveMutex();
 	sleep(2);
 
-#define CYCLES		0
-#define STEP_SIZE	20000
-#define SLEEP_TIME	250
+#define CYCLES		1000
+#define STEP_SIZE	20
+#define SLEEP_TIME	5
 
 	int	i;
 	for (i=0; i<CYCLES; i++) {
@@ -811,8 +813,9 @@ int main(int argc,char **argv)
 		int newposition = i * STEP_SIZE;
 		EnterMutex();
 		//Target_Position = newposition;
-		SET_BIT(ControlWord[0], 4); // 1 means NEW setpoint, it's cleared in callback once ACK
+		//SET_BIT(ControlWord[0], 4); // 1 means NEW setpoint, it's cleared in callback once ACK
 		//Target_Position = newposition;
+        PositionDemandValue[0] = newposition;        
 #ifdef MAN_PDO
                 sendOnePDOevent(&EPOScontrol_Data, 1);
 #endif
@@ -826,8 +829,9 @@ int main(int argc,char **argv)
                 int newposition = i * STEP_SIZE;
                 EnterMutex();
                 //Target_Position = newposition;
-                SET_BIT(ControlWord[0], 4); // 1 means NEW setpoint, it's cleared in callback once ACK
+                //SET_BIT(ControlWord[0], 4); // 1 means NEW setpoint, it's cleared in callback once ACK
                 //Target_Position = newposition;
+                PositionDemandValue[0] = newposition;
 #ifdef MAN_PDO
 		sendOnePDOevent(&EPOScontrol_Data, 1);
 #endif
