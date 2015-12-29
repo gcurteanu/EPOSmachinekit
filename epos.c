@@ -468,7 +468,7 @@ int     epos_get_slave_index (UNS8 slaveid) {
     return -1;
 }
 
-static int debug = 1;
+static int debug = 0;
 
 static UNS32 _statusWordCB (CO_Data * d, const indextable *idxtbl, UNS8 bSubindex) {
     
