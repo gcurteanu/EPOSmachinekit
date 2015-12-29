@@ -25,7 +25,7 @@ UNS32 get_dcf_count (UNS32 size, UNS8   dcfstream[]) {
     return count;
 }
 
-int add_dcf_entry (UNS32 size, UNS8 dcfstream[], UNS16 object, UNS8 subindex, UNS32 size, void * data)
+int add_dcf_entry (UNS32 size, UNS8 dcfstream[], UNS16 object, UNS8 subindex, UNS32 datasize, void * data)
 {
     int cursor = 4;
     UNS32 count = 0;
@@ -65,13 +65,13 @@ int add_dcf_entry (UNS32 size, UNS8 dcfstream[], UNS16 object, UNS8 subindex, UN
     dcfstream[cursor++] = object;
     dcfstream[cursor++] = object >> 8;
     dcfstream[cursor++] = subindex;
-    dcfstream[cursor++] = size;
-    dcfstream[cursor++] = size >> 8;
-    dcfstream[cursor++] = size >> 16;
-    dcfstream[cursor++] = size >> 24;
+    dcfstream[cursor++] = datasize;
+    dcfstream[cursor++] = datasize >> 8;
+    dcfstream[cursor++] = datasize >> 16;
+    dcfstream[cursor++] = datasize >> 24;
     
     int     idx;
-    for (idx = 0; idx < size; idx++)
+    for (idx = 0; idx < datasize; idx++)
         dcfstream[cursor++] = ((UNS8 *)data)[idx];
     
     // increment count
