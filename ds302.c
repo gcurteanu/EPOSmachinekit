@@ -4,8 +4,8 @@
 #include <time.h>
 #include "ds302.h"
 
-#define DS302_DEBUG(...)
-//#define DS302_DEBUG(...) eprintf(__VA_ARGS__)
+//#define DS302_DEBUG(...)
+#define DS302_DEBUG(...) eprintf(__VA_ARGS__)
 
 // max time in us for a boot
 #define NODE_BOOT_TIME 10*1000*1000
@@ -1285,7 +1285,7 @@ void _sm_BootMaster_bootproc (CO_Data* d, UNS32 idx)
             // machine is in use, so work it
             if (RUNNING_SM(ds302_data._bootSlave[slaveid])) {
                 // machine still running, skip it
-                DS302_DEBUG("Slave boot %d still running\n");
+                DS302_DEBUG("Slave boot %d still running\n", slaveid);
                 all_slaves_booted = 0;
                 continue;
             }

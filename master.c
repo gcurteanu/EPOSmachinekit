@@ -337,11 +337,11 @@ void TestMaster_post_SlaveBootup(CO_Data* d, UNS8 SlaveID) {
 	}
 */
 
-    if (ds302_status(d) == BootCompleted) {
+    /*if (ds302_status(d) == BootCompleted) {
         // a post-boot slave came up. Well, configure it if able?
         
         ds302_boot_slave (d, SlaveID);
-    }
+    }*/
 }
 
 void TestMaster_post_SlaveStateChange(CO_Data* d, UNS8 nodeId, e_nodeState newNodeState)
