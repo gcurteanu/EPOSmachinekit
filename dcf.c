@@ -37,9 +37,10 @@ UNS32 get_dcf_count (dcfstream_t *dcf) {
 
 int add_dcf_entry (dcfstream_t *dcf, UNS16 object, UNS8 subindex, UNS32 datasize, void * data)
 {
-    int cursor = 4;
-    UNS32 count = 0;
-    UNS32 total_items = get_dcf_count (dcf);
+    int     cursor = 4;
+    UNS32   count = 0;
+    UNS32   total_items = get_dcf_count (dcf);
+    UNS8    *datavar = data;
     
     if (!dcf)
         return 0;
@@ -85,9 +86,9 @@ int add_dcf_entry (dcfstream_t *dcf, UNS16 object, UNS8 subindex, UNS32 datasize
     
     int     idx;
     for (idx = 0; idx < datasize; idx++)
-        dcf->dcf[cursor++] = ((UNS8 *)data)[idx];
+        dcf->dcf[cursor++] = datavar[idx];
     
-    printf ("Added entry, cursor %d, had items %d\n", cursor, total_items);
+    //printf ("Added entry, cursor %d, had items %d\n", cursor, total_items);
     // increment count
     total_items++;
     dcf->dcf[0] = total_items;
