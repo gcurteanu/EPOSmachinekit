@@ -71,65 +71,6 @@ UNS8 dcfdatas[NMT_MAX_NODE_ID][DCF_MAX_SIZE];
 #define PROFILE_VELOCITY	1500
 #define PROFILE_ACCELERATION	50000
 
-static UNS16	EPOS_State;
-
-typedef struct {
-	// EPOS_State is the slave state
-	UNS16	EPOS_State;
-
-	// enabled or disabled
-	char	drive_enabled;
-	// initialised or not
-	char	drive_initialised;
-	// state of the drive
-	char	drive_state;
-
-	// CNC interface
-	char	enable;		// true - drive enabled, false - drive disabled
-	int	control_type;	// 0 - position control, 1 - velocity control
-	int	maxvel;		// maximal drive velocity
-	int	maxaccel;	// maximal drive acceleration
-
-	int	counts;		// raw encoder / position from the drive
-	float	position_scale;	// scale for positioning. position = counts / position-scale
-
-	float	position_cmd;	// position command (for position control)
-	float	velocity_cmd;	// velocity command (for velocity control)
-
-	float	position_fb;	// position feedback
-	float	velocity_fb;	// velocity feedback
-
-	char	fault;		// drive is faulted
-
-	// extra stuff
-
-	char	home;		// set to high to initialise homing
-	char	homing_done;	// set to high when drive is homed
-
-	char	lock;		// engage the lock brake
-	char	is_locked;	// lock brake is engaged and axis is confirmed locked
-
-	// GPIO pins
-	char	home_sw_pin;	// home switch pin
-	char	enable_pin;	// enable pin
-	char	in_a_pin;	// IN A
-	char	in_b_pin;	// IN B
-	char	in_c_pin;	// IN C
-	char	in_d_pin;	// IN D
-	char	in_e_pin;	// IN E
-	char	in_f_pin;	// IN F
-
-	float	in_ana1;	// Analog 1 in
-	float	in_ana2;	// Analog 2 in
-
-	char	out_a_pin;	// OUT A
-	char	out_b_pin;	// OUT B
-	char	out_c_pin;	// OUT C
-	char	out_d_pin;	// OUT D
-	
-} EPOS_drive;
-
-
 int sleep_ms ( unsigned long ms )
 {
         if ( ms >= 1000 ) ms = 1000;
