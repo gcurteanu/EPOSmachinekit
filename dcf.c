@@ -91,9 +91,9 @@ int add_dcf_entry (dcfstream_t *dcf, UNS16 object, UNS8 subindex, UNS32 datasize
     // increment count
     total_items++;
     dcf->dcf[0] = total_items;
-    dcf->dcf[0] = total_items >> 8;
-    dcf->dcf[0] = total_items >> 16;
-    dcf->dcf[0] = total_items >> 24;
+    dcf->dcf[1] = total_items >> 8;
+    dcf->dcf[2] = total_items >> 16;
+    dcf->dcf[3] = total_items >> 24;
     
     return 1;
 }
