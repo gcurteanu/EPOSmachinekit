@@ -447,6 +447,19 @@ int     epos_initialize_master (CO_Data * d, const char * dcf_file) {
     }
     
     load_dcf_set (&EPOS_drive.dcf_data, dcf_file);
+    
+    /* stupid fix for the PDO not being disabled by the objdictedit generator */
+    
+    UNS32   COB_ID = 0x80000000;
+    UNS32   size = sizeof (COB_ID);
+
+    for (idx = 0; idx < 20; idx++) {
+        writeLocalDict (EPOS_drive.d,
+            0x1400 + idx, 0x01, &COB_ID, &size, 0);
+        
+        writeLocalDict (EPOS_drive.d,
+            0x1800 + idx, 0x01, &COB_ID, &size, 0);
+    }
 }
 
 /*
