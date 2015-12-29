@@ -321,6 +321,9 @@ int     load_dcf_set (dcfset_t *set, const char *filename) {
             if (!add_dcf_entry (dcfstream, idx, subidx, len, &data)) {
                 printf ("Can't add DCF entry %04x/%02x = %08x (%d)\n", idx, subidx, data, len);
                 continue;
+            } else {
+                
+                printf ("ADDED [%d] %04x/%02x = %08x (%d)\n", nodeid, idx, subidx, data, len);
             }
         } else {
             printf ("Found data outside of [nodeid] section\n");
