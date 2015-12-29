@@ -129,14 +129,14 @@ void    display_dcf (dcfstream_t *dcf) {
         
         switch (datasize) {
             case 1:
-                eprintf ("%04x %02x (%d) %02x", idx, subidx, datasize, data);
+                eprintf ("%04x/%02x [%d] %02x\n", idx, subidx, datasize, data);
                 break;
             case 2:
-                eprintf ("%04x %02x (%d) %04x", idx, subidx, datasize, data);
+                eprintf ("%04x/%02x [%d] %04x\n", idx, subidx, datasize, data);
                 break;
             case 4:
             default:
-                eprintf ("%04x %02x (%d) %08x", idx, subidx, datasize, data);
+                eprintf ("%04x/%02x [%d] %08x\n", idx, subidx, datasize, data);
         }
         
         count++;
@@ -209,7 +209,7 @@ void    display_dcf_set (dcfset_t *set) {
     for (idx = 0; idx < set->count; idx++) {
         
         printf ("Concise DCF for node %d", set->nodes[idx].nodeid);
-        printf ("Has %d entries\n", get_dcf_count (&set->nodes[idx]));
+        printf (" has %d entries\n", get_dcf_count (&set->nodes[idx]));
         display_dcf (&set->nodes[idx]);
     }
 }
@@ -323,8 +323,7 @@ int     load_dcf_set (dcfset_t *set, const char *filename) {
                 printf ("Can't add DCF entry %04x/%02x = %08x (%d)\n", idx, subidx, data, len);
                 continue;
             } else {
-                
-                printf ("ADDED [%d] %04x/%02x = %08x (%d)\n", nodeid, idx, subidx, data, len);
+                //printf ("ADDED [%d] %04x/%02x = %08x (%d)\n", nodeid, idx, subidx, data, len);
             }
         } else {
             printf ("Found data outside of [nodeid] section\n");
