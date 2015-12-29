@@ -398,7 +398,7 @@ int     epos_setup_tx_pdo (UNS8 slaveid, int idx) {
     if (result != OD_SUCCESSFUL)
         return 0;        
 
-    PDO_map = 0x4062 << 16 | (idx + 1) << 8 | 0x20; // IDX / SubIDX / Len (bits)
+    PDO_map = 0x406B << 16 | (idx + 1) << 8 | 0x20; // IDX / SubIDX / Len (bits)
     result = writeLocalDict (EPOS_drive.d,
         0x1A00 + 0x01 + (idx * EPOS_PDO_MAX), 0x02, &PDO_map, &size, 0);
     if (result != OD_SUCCESSFUL)
