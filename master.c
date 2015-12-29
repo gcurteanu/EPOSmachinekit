@@ -54,9 +54,6 @@ unsigned int bootup = 1;
 
 unsigned int debug = 0;
 
-UNS8 dcfdatas[NMT_MAX_NODE_ID][DCF_MAX_SIZE];
-
-
 UNS32   Profile_Velocity;
 UNS32   Profile_Acceleration;
 UNS32   Profile_Deceleration;
@@ -81,10 +78,8 @@ int sleep_ms ( unsigned long ms )
 /*****************************************************************************/
 void TestMaster_heartbeatError(CO_Data* d, UNS8 heartbeatID)
 {
-	eprintf("TestMaster_heartbeatError %d\n", heartbeatID);
+    eprintf("TestMaster_heartbeatError %d\n", heartbeatID);
 }
-
-void setup_local_params(UNS8);
 
 /********************************************************
  * ConfigureSlaveNode is responsible to
@@ -93,7 +88,6 @@ void setup_local_params(UNS8);
  ********************************************************/
 void TestMaster_initialisation(CO_Data* d)
 {
-	setup_local_params (slavenodeid);
 }
 
 static int init_step = 0;
