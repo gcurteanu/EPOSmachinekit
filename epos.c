@@ -67,7 +67,7 @@ const char * epos_error_text (UNS16 errCode) {
 // master EPOS drive structure
 EPOS_drive_t        EPOS_drive;
 
-static void _statusWordCB (CO_Data * d, const indextable *idx, UNS8 bSubindex);
+static UNS32 _statusWordCB (CO_Data * d, const indextable *idx, UNS8 bSubindex);
 
 /*
  * Name         : epos_add_slave
