@@ -320,7 +320,10 @@ int     epos_setup_tx_pdo (UNS8 slaveid, int idx) {
     for (pdonr = 0; pdonr < EPOS_PDO_MAX; pdonr++) {
 
         // the PDO params
-        COB_ID = 0x80000000 + cobs[pdonr] + slaveid;
+        if (pdonr < 2)
+            COB_ID = 0x00000000 + cobs[pdonr] + slaveid;
+        else
+            COB_ID = 0x80000000 + cobs[pdonr] + slaveid;
         size = sizeof(COB_ID);
         result = writeLocalDict (EPOS_drive.d,
             0x1800 + pdonr + (idx * EPOS_PDO_MAX), 0x01, &COB_ID, &size, 0);
