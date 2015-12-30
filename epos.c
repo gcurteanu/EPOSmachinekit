@@ -486,8 +486,17 @@ int     epos_get_slave_index (UNS8 slaveid) {
     return -1;
 }
 
-static int debug = 0;
 
+
+/*
+ * the status word callback does the state machines for the DS402
+ *
+ *
+ *
+ *
+ */
+
+static int debug = 0;
 static UNS32 _statusWordCB (CO_Data * d, const indextable *idxtbl, UNS8 bSubindex) {
     
     // idx is the OD entry, bSubindex is the array item in it (eq. drive idx + 1)
@@ -580,21 +589,49 @@ static UNS32 _statusWordCB (CO_Data * d, const indextable *idxtbl, UNS8 bSubinde
             eprintf("Bored to input codes. Unknown code %04x\n", EPOS_drive.EPOS_State[idx]);
     }
 
-    // do the stupid assuming of position, and execution
-    // if the set point ack is SET, then CLEAR the new set point flag
+    // Do the PPM state machine
+    // first, update the current state
+    if (BIT_IS_SET(ControlWord[idx],4))
+        if (BIT_IS_SET(StatusWord[idx], 12))
+            EPOS_drive.EPOS_PPMState[idx] = PPM_Acknowledged;
+        else
+            EPOS_drive.EPOS_PPMState[idx] = PPM_Sent;
+    else if (BIT_IS_SET(StatusWord[idx], 12))
+            EPOS_drive.EPOS_PPMState[idx] = PPM_Running;
+        else
+            EPOS_drive.EPOS_PPMState[idx] = PPM_Ready;
+  
+    // now, see what transition is needed. The only transition at this point is from ACK to RUN
 
-
-    if(BIT_IS_SET(StatusWord[idx], 12)) {
-        if (BIT_IS_SET(ControlWord[idx], 4)) {
-            CLEAR_BIT(ControlWord[idx], 4);
-            if (debug) eprintf ("New move ACK!\n");
-        } else {
-            eprintf ("What the FUCKING hell???\n");
-        }
+    if (EPOS_drive.EPOS_PPMState[idx] == PPM_Acknowledged) {
+        
+        // transition to Running by clearing the ControlWord bit
+        CLEAR_BIT(ControlWord[idx], 4);
     }
-    
+        
     //sendPDOevent(d);
     sendOnePDOevent(d, 0);
 
     return OD_SUCCESSFUL;
+}
+
+/*
+    Verifies if the PPM is ready to do a move
+*/
+int     epos_can_do_PPM (int idx) {
+    
+    return EPOS_drive.EPOS_PPMState[idx] == PPM_Ready;
+}
+
+int     epos_do_move (int idx) {
+    
+    if (epos_can_do_PPM(idx)) {
+        
+        // set the bit for the control word
+        SET_BIT(ControlWord[idx],4);
+        sendPDOevent(EPOS_drive.d);
+        return 1;
+    }
+    
+    return 0;
 }

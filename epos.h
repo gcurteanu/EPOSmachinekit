@@ -41,19 +41,31 @@ typedef enum {
     EPOS_FAULT      = 0x0108,   
 } EPOS_DS402_state_t;
 
+typedef enum {
+    PPM_Ready = 0x00,
+    PPM_Sent = 0x10,
+    PPM_Acknowledged = 0x11,
+    PPM_Running = 0x01,
+} PPM_State_t;
+
 typedef struct {
+    // the CanFestival object
+    CO_Data*    d;
     
     // the list of the EPOS slaves we control
     UNS8        epos_slaves[MAX_EPOS_DRIVES];
     UNS8        epos_slave_count;
     
-    // holds the DCF data for the nodes
+    // holds the DCF data for initializing the nodes
     dcfset_t    dcf_data;
     
-    // holds the drive errors
+    // holds the drive errors signalled via EMCY
     UNS32       slave_err[MAX_EPOS_DRIVES][EPOS_MAX_ERRORS+1];
     
-    CO_Data*    d;
+    // EPOS_State is the slave state. Used internally by the drive routines
+    UNS16       EPOS_State[MAX_EPOS_DRIVES];
+    
+    PPM_State_t EPOS_PPMState[MAX_EPOS_DRIVES];
     
     // enabled or disabled
     char        drive_enabled;
@@ -62,8 +74,6 @@ typedef struct {
     // state of the drive
     char        drive_state;
 
-    // EPOS_State is the slave state. Used internally by the drive
-    UNS16       EPOS_State[MAX_EPOS_DRIVES];
         
     // CNC interface
     char        enable[MAX_EPOS_DRIVES];         // true - drive enabled, false - drive disabled
@@ -117,5 +127,9 @@ int     epos_setup_sdo (UNS8 slaveid, int idx);
 int     epos_setup_rx_pdo (UNS8 slaveid, int idx);
 int     epos_setup_tx_pdo (UNS8 slaveid, int idx);
 int     epos_add_slave (UNS8 slaveid);
+
+// EPOS PPM routines
+int     epos_can_do_PPM (int idx);
+int     epos_do_move (int idx);
 
 #endif
