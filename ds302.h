@@ -6,9 +6,9 @@
     Debug defines
 */
 #ifdef USE_XENO
-#define eprintf(...) printf (__VA_ARGS__)
+#define eprintf(...) rt_printf (__VA_ARGS__)
 #else
-#define eprintf(...) printf (__VA_ARGS__)
+#define eprintf(...) rt_printf (__VA_ARGS__)
 #endif
 
 /*

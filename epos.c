@@ -11,7 +11,7 @@ Main routines for the EPOS drives
 
 #define EPOS_PDO_MAX     4
 
-#define eprintf(...) printf(__VA_ARGS__)
+#define eprintf(...) rt_printf(__VA_ARGS__)
 
 epos_error_t epos_error_table[] = {
     {0x0000, "No error", "No error is present"},

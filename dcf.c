@@ -1,7 +1,7 @@
 #include <stdlib.h>
 #include "dcf.h"
 
-#define eprintf(...) printf(__VA_ARGS__)
+#define eprintf(...) rt_printf(__VA_ARGS__)
 
 int clear_dcf (dcfstream_t *dcf) {
     

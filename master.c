@@ -47,12 +47,18 @@ void pause(void)
 
 #include "epos.h"
 
+#include <pthread.h>
+
+
 //#include "epos_api.h"
 
 unsigned int slavenodeid = 0x01;
 unsigned int bootup = 1;
 
 unsigned int debug = 0;
+
+uint64_t    almClock = 0;
+uint64_t    almClock2 = 0;                 
 
 UNS32   Profile_Velocity;
 UNS32   Profile_Acceleration;
@@ -61,9 +67,9 @@ UNS32   Motion_ProfileType;
 
 //#define USE_HEARTBEAT
 #define HB_INTERVAL_MS		1000
-#define USE_SYNC
-#define SYNC_INTERVAL_MS 	10
-//#define MAN_PDO
+//#define USE_SYNC
+#define SYNC_INTERVAL_MS 	100
+#define MAN_PDO
 
 
 #define PROFILE_VELOCITY	1500
@@ -71,8 +77,14 @@ UNS32   Motion_ProfileType;
 
 int sleep_ms ( unsigned long ms )
 {
-        if ( ms >= 1000 ) ms = 1000;
-        return usleep ( ms * 1000 );
+        struct timespec sleep, left;
+
+        sleep.tv_sec = ms / 1000;
+        sleep.tv_nsec = (ms % 1000) * 1000 * 1000;
+        nanosleep (&sleep, &left);
+
+        //rt_timer_spin (ms * 1000 * 1000);
+        //rt_task_sleep (ms * 1000 * 1000);
 }
 
 /*****************************************************************************/
@@ -153,24 +165,26 @@ void TestMaster_preOperational(CO_Data* d)
 	eprintf("Slave set to preOperational\n");
 */
 
-#ifdef USE_SYNC
-    UNS32 interval = SYNC_INTERVAL_MS * 1000;
-    UNS32 size = sizeof (interval);
-
-    writeLocalDict( &EPOScontrol_Data, /*CO_Data* d*/
-                    0x1006, /*UNS16 index*/
-                    0x00, /*UNS8 subind*/ 
-                    &interval, /*void * pSourceData,*/ 
-                    &size, /* UNS8 * pExpectedSize*/
-                    RW);  /* UNS8 checkAccess */
-
-    startSYNC(&EPOScontrol_Data);
-#endif
 }
 
 void TestMaster_operational(CO_Data* d)
 {
     eprintf("NMT: TestMaster_operational\n");
+
+#ifdef USE_SYNC
+    UNS32 interval = SYNC_INTERVAL_MS * 1000;
+    UNS32 size = sizeof (interval);               
+
+    writeLocalDict( &EPOScontrol_Data, /*CO_Data* d*/
+                    0x1006, /*UNS16 index*/
+                    0x00, /*UNS8 subind*/      
+                    &interval, /*void * pSourceData,*/ 
+                    &size, /* UNS8 * pExpectedSize*/
+                    RW);  /* UNS8 checkAccess */
+
+    startSYNC(&EPOScontrol_Data);
+    eprintf("Starting SYNC at a %d ms interval\n", SYNC_INTERVAL_MS);
+#endif
 }
 
 void TestMaster_stopped(CO_Data* d)
@@ -351,9 +365,27 @@ void    printStatusword () {
     eprintf ("Status mach END\n\n");
 }
 
+#define TIMER_USEC  100000
+
 void timer_play(CO_Data* d, UNS32 id)
 {
-	eprintf ("TIMER: play with ID %x, %d\n", id, getElapsedTime());
+    uint64_t    crtclock = rtuClock();
+    uint64_t    cdiff = crtclock - almClock;
+    int diff = cdiff - TIMER_USEC;
+
+    if (diff > 100 || diff < -100) eprintf ("1 : elapsed %6lld %4d\n", cdiff, diff);
+    almClock = crtclock;
+}
+
+#define TIMER2_USEC  50000
+void timer_play2(CO_Data* d, UNS32 id)
+{
+    uint64_t    crtclock = rtuClock();
+    uint64_t    cdiff = crtclock - almClock2;
+    int diff = cdiff - TIMER2_USEC;
+
+    if (diff > 100 || diff < -100) eprintf ("2 : elapsed %6lld %4d\n", cdiff, diff);
+    almClock2 = crtclock; 
 }
 
 int     ds302_nl_keepalive_nodes_present(CO_Data* d);
@@ -411,6 +443,7 @@ int main(int argc,char **argv)
     }
   }
 
+
     //setup_dcf ();
     
     // Set the master ID
@@ -457,7 +490,24 @@ int main(int argc,char **argv)
 	
 	// Start timer thread
 	StartTimerLoop(&InitNodes);
-	
+
+
+
+    // BECOME REALTIME
+
+    //struct sched_param  param = { .sched_priority = 80 };       
+    //pthread_setschedparam(pthread_self(), SCHED_FIFO, &param);     
+
+
+    //EnterMutex();
+    SetAlarm (&EPOScontrol_Data, 0x12334, timer_play, US_TO_TIMEVAL(TIMER_USEC), US_TO_TIMEVAL(TIMER_USEC));
+    SetAlarm (&EPOScontrol_Data, 0x56789, timer_play2, US_TO_TIMEVAL(TIMER2_USEC), US_TO_TIMEVAL(TIMER2_USEC));    
+    //LeaveMutex();
+
+    //sleep_ms (100 * 1000);
+
+    //sleep (100);
+
 	/* doing the boot process in the MAIN loop */
 	
     ds302_init (&EPOScontrol_Data);
@@ -467,19 +517,22 @@ int main(int argc,char **argv)
 	ds302_start (&EPOScontrol_Data);
 	LeaveMutex();
 
-    ds302_setHeartbeat (&EPOScontrol_Data, 0x01, 100);
+    ds302_setHeartbeat (&EPOScontrol_Data, 0x01, 150);
 
-
-	// timer play
-	// MS_TO_TIMEVAL(ms) or US_TO_TIMEVAL(us) to create the timevalentries
-
-	//SetAlarm (&EPOScontrol_Data, 0x12334, timer_play, MS_TO_TIMEVAL(1000), MS_TO_TIMEVAL(1000));
 
 	//printStatusword ();
 
 	eprintf ("EPOS loop started, waiting for enabled!\n");
 
-	while (ds302_status(&EPOScontrol_Data) != BootCompleted) sleep(1);
+	while (ds302_status(&EPOScontrol_Data) != BootCompleted) sleep_ms(100);
+
+    // start loop to generate PDOs from a timer loop
+    // timer play
+    // MS_TO_TIMEVAL(ms) or US_TO_TIMEVAL(us) to create the timevalentries
+    //EnterMutex();
+    //SetAlarm (&EPOScontrol_Data, 0x12334, timer_play, US_TO_TIMEVAL(TIMER_USEC), US_TO_TIMEVAL(TIMER_USEC));
+    //LeaveMutex();
+
 
 	eprintf ("EPOS ready for operation!\n");
 	eprintf ("Setting PPM params\n");
@@ -494,16 +547,17 @@ int main(int argc,char **argv)
         sendPDOevent(&EPOScontrol_Data);
 #endif
 	LeaveMutex();
-	sleep(2);
 #endif
 
+
+    //sleep(100);
 #define CYCLES		1000
-#define STEP_SIZE	20
-#define SLEEP_TIME	5
+#define STEP_SIZE	30
+#define SLEEP_TIME	1
 
 	int	i;
 	for (i=0; i<CYCLES; i++) {
-		eprintf ("Moving to %d\n", i);
+		//eprintf ("%d ", i);
 		int newposition = i * STEP_SIZE;
 #ifdef MAN_PDO
 		EnterMutex();
@@ -516,12 +570,14 @@ int main(int argc,char **argv)
         sendOnePDOevent(&EPOScontrol_Data, 1);
 		LeaveMutex();
 #endif
-		eprintf ("Executing move...\n");
+		//eprintf ("Executing move...\n");
 		sleep_ms(SLEEP_TIME);
 	}
 
+    eprintf ("done\n");
+
 	for (i=CYCLES; i>=0; i--) {
-                eprintf ("Moving to %d\n", i);
+                //eprintf ("%d ", i);
                 int newposition = i * STEP_SIZE;
 #ifdef MAN_PDO
                 EnterMutex();
@@ -534,14 +590,17 @@ int main(int argc,char **argv)
 		sendOnePDOevent(&EPOScontrol_Data, 1);
                 LeaveMutex();
 #endif
-                eprintf ("Executing move...\n");      
+                //eprintf ("Executing move...\n");      
                 sleep_ms(SLEEP_TIME);
 
 	}
+    eprintf ("done\n");
+
 	eprintf ("Moves finished\n");
 
 	// wait Ctrl-C
-	pause();
+	//pause();
+    sleep_ms (1000);
 	eprintf("Finishing.\n");
 
 	init_step = 0;
@@ -551,11 +610,11 @@ int main(int argc,char **argv)
         masterSendNMTstateChange (&EPOScontrol_Data, slavenodeid, NMT_Enter_PreOperational);
 	LeaveMutex();
 	eprintf ("Slave set to pre-op\n");
-	sleep(1);
+	sleep_ms(100);
 
 	setState (&EPOScontrol_Data, Pre_operational);
 	eprintf ("Master set to pre-op\n");
-	sleep(1);
+	sleep_ms(100);
 
 	// Stop master
 	setState(&EPOScontrol_Data, Stopped);
