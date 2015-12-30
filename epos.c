@@ -610,7 +610,7 @@ static UNS32 _statusWordCB (CO_Data * d, const indextable *idxtbl, UNS8 bSubinde
     return OD_SUCCESSFUL;
 }
 
-
+#define __DEBUG__
 void    update_PPM (int idx) {
     
     // update the current state
