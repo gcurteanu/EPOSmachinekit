@@ -647,7 +647,7 @@ void    update_PPM (int idx) {
 */
 int     epos_can_do_PPM (int idx) {
     
-    update_PPM ();
+    update_PPM (idx);
     return EPOS_drive.EPOS_PPMState[idx] == PPM_Ready;
 }
 
