@@ -600,7 +600,22 @@ static UNS32 _statusWordCB (CO_Data * d, const indextable *idxtbl, UNS8 bSubinde
             EPOS_drive.EPOS_PPMState[idx] = PPM_Running;
         else
             EPOS_drive.EPOS_PPMState[idx] = PPM_Ready;
-  
+
+    switch (EPOS_drive.EPOS_PPMState[idx]) {
+        case PPM_Acknowledged:
+            eprintf ("PPM acknowledged\n");
+            break;
+        case PPM_Sent:
+            eprintf ("PPM sent\n");
+            break;
+        case PPM_Running:
+            eprintf ("PPM running\n");
+            break;
+        case PPM_Ready:
+            eprintf ("PPM ready\n");
+            break;
+    }
+        
     // now, see what transition is needed. The only transition at this point is from ACK to RUN
 
     if (EPOS_drive.EPOS_PPMState[idx] == PPM_Acknowledged) {
