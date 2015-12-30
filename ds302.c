@@ -836,8 +836,8 @@ void _sm_BootSlave_startErrorControlService(CO_Data* d, UNS8 nodeid)
         // code for the first run only
     
         // display node state for fun
-        e_nodeState slavestate = getNodeState (d, nodeid);
-        DS302_DEBUG("Node state for slave %d is %x\n", nodeid, slavestate);
+        //e_nodeState slavestate = getNodeState (d, nodeid);
+        //DS302_DEBUG("Node state for slave %d is %x\n", nodeid, slavestate);
 
         UNS32   Obj1016;
         UNS32   size;
@@ -1100,6 +1100,8 @@ int	ds302_nl_send_reset_to_non_keepalive(CO_Data* d)
             }
         }
     }
+
+    return 1;
 }
 
 

@@ -315,7 +315,7 @@ int     epos_setup_tx_pdo (UNS8 slaveid, int idx) {
     UNS32   size;
     UNS8    trans_type = 0xFF;
     UNS8    map_count = 0x00;
-    UNS16   inhibit_time = 10; //(it's in 100us, 10 = 1ms)
+    UNS16   inhibit_time = 0; //10; //(it's in 100us, 10 = 1ms)
     
     for (pdonr = 0; pdonr < EPOS_PDO_MAX; pdonr++) {
 
@@ -460,6 +460,8 @@ int     epos_initialize_master (CO_Data * d, const char * dcf_file) {
         writeLocalDict (EPOS_drive.d,
             0x1800 + idx, 0x01, &COB_ID, &size, 0);
     }
+
+    return 1;
 }
 
 /*
@@ -580,7 +582,8 @@ static UNS32 _statusWordCB (CO_Data * d, const indextable *idxtbl, UNS8 bSubinde
 
     // do the stupid assuming of position, and execution
     // if the set point ack is SET, then CLEAR the new set point flag
-/*
+
+
     if(BIT_IS_SET(StatusWord[idx], 12)) {
         if (BIT_IS_SET(ControlWord[idx], 4)) {
             CLEAR_BIT(ControlWord[idx], 4);
@@ -589,6 +592,9 @@ static UNS32 _statusWordCB (CO_Data * d, const indextable *idxtbl, UNS8 bSubinde
             eprintf ("What the FUCKING hell???\n");
         }
     }
-*/    
-    sendPDOevent(d);
+    
+    //sendPDOevent(d);
+    sendOnePDOevent(d, 0);
+
+    return OD_SUCCESSFUL;
 }

@@ -103,7 +103,7 @@ int add_dcf_entry (dcfstream_t *dcf, UNS16 object, UNS8 subindex, UNS32 datasize
 void    display_dcf (dcfstream_t *dcf) {
     
     UNS32   total_items = get_dcf_count (dcf);
-    UNS32   count;
+    UNS32   count = 0;
     int     cursor = 4;
     
     if (!dcf)
@@ -156,7 +156,7 @@ int     get_dcf_node (dcfset_t * set, UNS8 nodeid, dcfstream_t** dcf) {
     *dcf = NULL;
     
     for (idx = 0; idx < set->count; idx++)
-        if (set->nodes[idx].nodeid = nodeid) {
+        if (set->nodes[idx].nodeid == nodeid) {
             *dcf = &set->nodes[idx];
             return 1;
         }
@@ -333,5 +333,7 @@ int     load_dcf_set (dcfset_t *set, const char *filename) {
         }
     }
     
-    close (f);
+    fclose (f);
+
+    return 1;
 }

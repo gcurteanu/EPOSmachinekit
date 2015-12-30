@@ -1,5 +1,4 @@
 
-
 /*
 This file is part of CanFestival, a library implementing CanOpen Stack. 
 
@@ -75,12 +74,25 @@ UNS32   Motion_ProfileType;
 #define PROFILE_VELOCITY	1500
 #define PROFILE_ACCELERATION	50000
 
-int sleep_ms ( unsigned long ms )
+static void sleep_ms ( unsigned long ms )
 {
         struct timespec sleep, left;
 
         sleep.tv_sec = ms / 1000;
         sleep.tv_nsec = (ms % 1000) * 1000 * 1000;
+        nanosleep (&sleep, &left);
+
+        //rt_timer_spin (ms * 1000 * 1000);
+        //rt_task_sleep (ms * 1000 * 1000);
+}
+
+
+static void sleep_us ( unsigned long us )
+{
+        struct timespec sleep, left;
+
+        sleep.tv_sec = us / 1000 * 1000;
+        sleep.tv_nsec = (us % (1000 * 1000)) * 1000;
         nanosleep (&sleep, &left);
 
         //rt_timer_spin (ms * 1000 * 1000);
@@ -369,7 +381,7 @@ void    printStatusword () {
 
 void timer_play(CO_Data* d, UNS32 id)
 {
-    uint64_t    crtclock = rtuClock();
+    uint64_t    crtclock = rtuClock(); //rt_timer_read();
     uint64_t    cdiff = crtclock - almClock;
     int diff = cdiff - TIMER_USEC;
 
@@ -380,7 +392,7 @@ void timer_play(CO_Data* d, UNS32 id)
 #define TIMER2_USEC  50000
 void timer_play2(CO_Data* d, UNS32 id)
 {
-    uint64_t    crtclock = rtuClock();
+    uint64_t    crtclock = rtuClock(); //rt_timer_read();
     uint64_t    cdiff = crtclock - almClock2;
     int diff = cdiff - TIMER2_USEC;
 
@@ -495,13 +507,13 @@ int main(int argc,char **argv)
 
     // BECOME REALTIME
 
-    //struct sched_param  param = { .sched_priority = 80 };       
-    //pthread_setschedparam(pthread_self(), SCHED_FIFO, &param);     
+    struct sched_param  param = { .sched_priority = 80 };       
+    pthread_setschedparam(pthread_self(), SCHED_FIFO, &param);     
 
 
     //EnterMutex();
-    SetAlarm (&EPOScontrol_Data, 0x12334, timer_play, US_TO_TIMEVAL(TIMER_USEC), US_TO_TIMEVAL(TIMER_USEC));
-    SetAlarm (&EPOScontrol_Data, 0x56789, timer_play2, US_TO_TIMEVAL(TIMER2_USEC), US_TO_TIMEVAL(TIMER2_USEC));    
+    //SetAlarm (&EPOScontrol_Data, 0x12334, timer_play, US_TO_TIMEVAL(TIMER_USEC), US_TO_TIMEVAL(TIMER_USEC));
+    //SetAlarm (&EPOScontrol_Data, 0x56789, timer_play2, US_TO_TIMEVAL(TIMER2_USEC), US_TO_TIMEVAL(TIMER2_USEC));    
     //LeaveMutex();
 
     //sleep_ms (100 * 1000);
@@ -511,13 +523,14 @@ int main(int argc,char **argv)
 	/* doing the boot process in the MAIN loop */
 	
     ds302_init (&EPOScontrol_Data);
-    OperationMode[0] = -1;
+    // profile position mode
+    OperationMode[0] = 1;
 
 	EnterMutex();
 	ds302_start (&EPOScontrol_Data);
 	LeaveMutex();
 
-    ds302_setHeartbeat (&EPOScontrol_Data, 0x01, 150);
+    ds302_setHeartbeat (&EPOScontrol_Data, 0x01, 75);
 
 
 	//printStatusword ();
@@ -536,7 +549,7 @@ int main(int argc,char **argv)
 
 	eprintf ("EPOS ready for operation!\n");
 	eprintf ("Setting PPM params\n");
-#ifdef _NOT_USED_
+//#ifdef _NOT_USED_
 	EnterMutex();
 	SET_BIT(ControlWord[0], 5); // 1 start immmediately, interrupt in progress if any. 0 finish previous first
 	CLEAR_BIT(ControlWord[0], 6); // 0 absolute, 1 relative
@@ -547,54 +560,60 @@ int main(int argc,char **argv)
         sendPDOevent(&EPOScontrol_Data);
 #endif
 	LeaveMutex();
-#endif
+//#endif
 
+    VelocityDemandValue[0] = 1000;
 
-    //sleep(100);
-#define CYCLES		1000
-#define STEP_SIZE	30
-#define SLEEP_TIME	1
+#define CYCLES		10000
+#define STEP_SIZE	50
+#define SLEEP_TIME	8500
 
 	int	i;
 	for (i=0; i<CYCLES; i++) {
-		//eprintf ("%d ", i);
+		eprintf ("%d ", i);
 		int newposition = i * STEP_SIZE;
 #ifdef MAN_PDO
 		EnterMutex();
 #endif
 		//Target_Position = newposition;
-		//SET_BIT(ControlWord[0], 4); // 1 means NEW setpoint, it's cleared in callback once ACK
+		SET_BIT(ControlWord[0], 4); // 1 means NEW setpoint, it's cleared in callback once ACK
 		//Target_Position = newposition;
         PositionDemandValue[0] = newposition;        
 #ifdef MAN_PDO
         sendOnePDOevent(&EPOScontrol_Data, 1);
+        sendOnePDOevent(&EPOScontrol_Data, 0);
 		LeaveMutex();
 #endif
 		//eprintf ("Executing move...\n");
-		sleep_ms(SLEEP_TIME);
+		sleep_us(SLEEP_TIME);
 	}
 
     eprintf ("done\n");
 
+    sleep_ms (1000);
+
 	for (i=CYCLES; i>=0; i--) {
-                //eprintf ("%d ", i);
+                eprintf ("%d ", i);
                 int newposition = i * STEP_SIZE;
 #ifdef MAN_PDO
                 EnterMutex();
 #endif
                 //Target_Position = newposition;
-                //SET_BIT(ControlWord[0], 4); // 1 means NEW setpoint, it's cleared in callback once ACK
+                SET_BIT(ControlWord[0], 4); // 1 means NEW setpoint, it's cleared in callback once ACK
                 //Target_Position = newposition;
                 PositionDemandValue[0] = newposition;
 #ifdef MAN_PDO
 		sendOnePDOevent(&EPOScontrol_Data, 1);
+        sendOnePDOevent(&EPOScontrol_Data, 0);
                 LeaveMutex();
 #endif
                 //eprintf ("Executing move...\n");      
-                sleep_ms(SLEEP_TIME);
+                sleep_us(SLEEP_TIME);
 
 	}
     eprintf ("done\n");
+
+    sleep_ms(100);
 
 	eprintf ("Moves finished\n");
 
