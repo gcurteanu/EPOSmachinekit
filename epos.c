@@ -593,6 +593,27 @@ static UNS32 _statusWordCB (CO_Data * d, const indextable *idxtbl, UNS8 bSubinde
 
     // Do the PPM state machine
     // first, update the current state
+    update_PPM (idx);
+    
+    // now, see what transition is needed. The only transition at this point is from ACK to RUN
+
+    if (EPOS_drive.EPOS_PPMState[idx] == PPM_Acknowledged) {
+        
+        // transition to Running by clearing the ControlWord bit
+        CLEAR_BIT(ControlWord[idx], 4);
+    }
+        
+    // send the updates (observing the mapping)
+    //sendPDOevent(d);
+    sendOnePDOevent(EPOS_drive.d, 0 + (idx * EPOS_PDO_MAX));
+
+    return OD_SUCCESSFUL;
+}
+
+
+void    update_PPM (int idx) {
+    
+    // update the current state
     if (BIT_IS_SET(ControlWord[idx],4))
         if (BIT_IS_SET(StatusWord[idx], 12))
             EPOS_drive.EPOS_PPMState[idx] = PPM_Acknowledged;
@@ -601,7 +622,7 @@ static UNS32 _statusWordCB (CO_Data * d, const indextable *idxtbl, UNS8 bSubinde
     else if (BIT_IS_SET(StatusWord[idx], 12))
             EPOS_drive.EPOS_PPMState[idx] = PPM_Running;
         else
-            EPOS_drive.EPOS_PPMState[idx] = PPM_Ready;
+            EPOS_drive.EPOS_PPMState[idx] = PPM_Ready;    
 
 #ifdef __DEBUG__        
     switch (EPOS_drive.EPOS_PPMState[idx]) {
@@ -619,20 +640,6 @@ static UNS32 _statusWordCB (CO_Data * d, const indextable *idxtbl, UNS8 bSubinde
             break;
     }
 #endif
-
-    // now, see what transition is needed. The only transition at this point is from ACK to RUN
-
-    if (EPOS_drive.EPOS_PPMState[idx] == PPM_Acknowledged) {
-        
-        // transition to Running by clearing the ControlWord bit
-        CLEAR_BIT(ControlWord[idx], 4);
-    }
-        
-    // send the updates (observing the mapping)
-    //sendPDOevent(d);
-    sendOnePDOevent(EPOS_drive.d, 0 + (idx * EPOS_PDO_MAX));
-
-    return OD_SUCCESSFUL;
 }
 
 /*
@@ -640,6 +647,7 @@ static UNS32 _statusWordCB (CO_Data * d, const indextable *idxtbl, UNS8 bSubinde
 */
 int     epos_can_do_PPM (int idx) {
     
+    update_PPM ();
     return EPOS_drive.EPOS_PPMState[idx] == PPM_Ready;
 }
 
