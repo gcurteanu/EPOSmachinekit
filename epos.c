@@ -628,8 +628,7 @@ static UNS32 _statusWordCB (CO_Data * d, const indextable *idxtbl, UNS8 bSubinde
         CLEAR_BIT(ControlWord[idx], 4);
     }
         
-    //sendPDOevent(d);
-    sendOnePDOevent(d, 0);
+    sendPDOevent(d);
 
     return OD_SUCCESSFUL;
 }
