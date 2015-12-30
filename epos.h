@@ -130,6 +130,6 @@ int     epos_add_slave (UNS8 slaveid);
 
 // EPOS PPM routines
 int     epos_can_do_PPM (int idx);
-int     epos_do_move (int idx);
+int     epos_do_move (int idx, INTEGER32 position);
 
 #endif

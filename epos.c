@@ -387,18 +387,20 @@ int     epos_setup_tx_pdo (UNS8 slaveid, int idx) {
         return 0;        
 
 // Tx PDO 2: (mode dependant)
+// PPM: ControlWord + Position Demand
+// ControlWord (2B) 0x5040 / idx + 1
 // Position Demand Value (4B) 0x4062 / idx + 1
-// Velocity Demand Value (4B) 0x406B / idx + 1
+// VPM: ControlWord + Velocity Demand
 
     size = sizeof (PDO_map);
 
-    PDO_map = 0x4062 << 16 | (idx + 1) << 8 | 0x20; // IDX / SubIDX / Len (bits)
+    PDO_map = 0x5040 << 16 | (idx + 1) << 8 | 0x10; // IDX / SubIDX / Len (bits)
     result = writeLocalDict (EPOS_drive.d,
         0x1A00 + 0x01 + (idx * EPOS_PDO_MAX), 0x01, &PDO_map, &size, 0);
     if (result != OD_SUCCESSFUL)
         return 0;        
 
-    PDO_map = 0x406B << 16 | (idx + 1) << 8 | 0x20; // IDX / SubIDX / Len (bits)
+    PDO_map = 0x4062 << 16 | (idx + 1) << 8 | 0x20; // IDX / SubIDX / Len (bits)
     result = writeLocalDict (EPOS_drive.d,
         0x1A00 + 0x01 + (idx * EPOS_PDO_MAX), 0x02, &PDO_map, &size, 0);
     if (result != OD_SUCCESSFUL)
@@ -640,10 +642,11 @@ int     epos_can_do_PPM (int idx) {
     return EPOS_drive.EPOS_PPMState[idx] == PPM_Ready;
 }
 
-int     epos_do_move (int idx) {
+int     epos_do_move (int idx, INTEGER32 position) {
     
     if (epos_can_do_PPM(idx)) {
-        
+        // load the position into 0x4062[idx+1]
+        PositionDemandValue[idx] = position;
         // set the bit for the control word
         SET_BIT(ControlWord[idx],4);
         sendPDOevent(EPOS_drive.d);
