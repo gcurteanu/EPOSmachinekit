@@ -628,7 +628,9 @@ static UNS32 _statusWordCB (CO_Data * d, const indextable *idxtbl, UNS8 bSubinde
         CLEAR_BIT(ControlWord[idx], 4);
     }
         
-    sendPDOevent(d);
+    // send the updates (observing the mapping)
+    //sendPDOevent(d);
+    sendOnePDOevent(EPOS_drive.d, 0 + (idx * EPOS_PDO_MAX));
 
     return OD_SUCCESSFUL;
 }
@@ -648,7 +650,8 @@ int     epos_do_move (int idx, INTEGER32 position) {
         PositionDemandValue[idx] = position;
         // set the bit for the control word
         SET_BIT(ControlWord[idx],4);
-        sendPDOevent(EPOS_drive.d);
+        // send the PDO for the MOVE (observing the mapping)
+        sendOnePDOevent(EPOS_drive.d, 1 + (idx * EPOS_PDO_MAX));
         return 1;
     }
     
