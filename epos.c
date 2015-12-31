@@ -665,3 +665,10 @@ int     epos_do_move (int idx, INTEGER32 position) {
     
     return 0;
 }
+
+/*
+*/
+int     epos_in_position (int idx) {
+    
+    return BIT_IS_SET (StatusWord[idx], 10);
+}
