@@ -498,7 +498,7 @@ int     epos_get_slave_index (UNS8 slaveid) {
  *
  */
 
-static int debug = 0;
+static int debug = 1;
 static UNS32 _statusWordCB (CO_Data * d, const indextable *idxtbl, UNS8 bSubindex) {
     
     // idx is the OD entry, bSubindex is the array item in it (eq. drive idx + 1)
@@ -507,30 +507,76 @@ static UNS32 _statusWordCB (CO_Data * d, const indextable *idxtbl, UNS8 bSubinde
     // update the state for the corresponding drive based on the status word
     EPOS_drive.EPOS_State[idx] = (*(UNS16 *)(idxtbl->pSubindex[bSubindex].pObject)) & 0x417F;
     
+    /*
+        Possible external commands:
+        - Shutdown (2, 6, 8) : all shutdown targets go to RSO
+        - Switch On (3) 
+        - Disable operation (5) / Enable operation (4,16) - power crossing (enabled/disabled)
+        - QuickStop (7 in PD, 10 in PD, 11 in PE)
+        - Disable Voltage (7 in PD, 9 in PE, 10 in PD, 12 in PE)
+        - Fault Reset (15)
+        
+        Everything is controlled by 4 bits in Controlword + fault reset (15)
+        - bit 0 : Switch On / Switch Off
+        - bit 1 : Enable Voltage / Disable Voltage
+        - bit 2 : Quick Stop
+        - bit 3 : Enable Operation / Disable operation
+        - bit 7 : Fault reset
+        
+        In short:
+        - drive is ENABLED or DISABLED (should be edge triggered, not level triggered)
+            It means we'll have a EnableDrive and DisableDrive external function without a stable signal
+            EnableDrive will work from SOD only via 2->3->4
+            DisableDrive will work from OPEN/SD only via 9/12
+        - QuickStop is ENABLED or DISABLED (can be level triggered)
+            a QuickStop pin will control 11/16 transitions
+        - if fault active, try to reset it and go to disabled? (edge triggered)
+            It means we'll have a FaultReset function that will work in the FAULT state only
+    */
+    
     /***** NOTE: callback from PDO, NO MUTEXES! ****/
     switch (EPOS_drive.EPOS_State[idx]) {
         case EPOS_START:
+            // state: bootup
+            // possible transitions:
+            // 0 -> NOTREADY (AUTO)
             if (debug) eprintf("Start\n");
             break;
         case EPOS_NOTREADY:
+            // state: measure current offset
+            // state: drive function disabled
+            // possible transitions (entry from 19, Node Reset)
+            // 1 -> SOD (switch on disabled) (AUTO)
             if (debug) eprintf("Not Ready to Switch On\n");
-            // transition 1 to switch on disabled
-            // AUTOMATIC
             break;
         case EPOS_SOD:
+            // state: drive init complete
+            // state: drive function disabled
+            // state: DRIVE PARAMS CAN BE CHANGED
+            // THIS IS THE POWER DISABLED DEFAULT STATE
+            // possible transitions
+            // 2 -> RSO (ready to switch on) (manual) (user, function)
             if (debug) eprintf("Switch On Disabled\n");
-            // transition 2 to ready to switch on
             /* should be done if we REQUESTED to turn on */
             //EnterMutex();
-            SET_BIT(ControlWord[idx], 2);
+        
+            // clear the Fault Reset bit here, fault was reset
+            CLEAR_BIT (ControlWord[idx], 7);
+            
+            /*SET_BIT(ControlWord[idx], 2);
             SET_BIT(ControlWord[idx], 1);
-            CLEAR_BIT(ControlWord[idx], 0);              
+            CLEAR_BIT(ControlWord[idx], 0);*/
+            
             //LeaveMutex();
             break;
         case EPOS_RSO:
+            // state: drive function disabled
+            // state: drive params can be changed
+            // this is a transitory state
+            // possible transitions
+            // 3 -> SWO (switched on) (automatic) 
+            // 7 -> SOD (switch on disabled) (manual, not needed)
             if (debug) eprintf("Ready to Switch On\n");
-            // transition 3 to switched on
-            // transition 7 to switch on disabled
             /* 3 if requested to turn on, 7 if requested to shut down */
             // this is #3
             //EnterMutex();
@@ -540,10 +586,13 @@ static UNS32 _statusWordCB (CO_Data * d, const indextable *idxtbl, UNS8 bSubinde
             //LeaveMutex();
             break;
         case EPOS_SWO:
+            // state: drive function disabled
+            // this is a transitory state
+            // possible transitions
+            // 4 -> REFRESH (automatic)
+            // 6 -> RSO (manual, not needed)
+            // 10 ->SOD (manual, not needed)
             if (debug) eprintf("Switched on\n");
-            // transition 4 to refresh -> measure
-            // transition 6 to ready to switch on
-            // transition 10 to switch on disabled
             /* 4 if requested to turn on, 6 or 10 if requested to shut down */
             // this is #4
             //EnterMutex();
@@ -554,38 +603,68 @@ static UNS32 _statusWordCB (CO_Data * d, const indextable *idxtbl, UNS8 bSubinde
             //LeaveMutex();
             break;
         case EPOS_REFRESH:
+            // state: refresh power stage
+            // possible transitions
+            // 20 -> MEASURE (AUTO)
             if (debug) eprintf("Refresh\n");
             // transition 20 to measure
             // this should be automatic
             break;
         case EPOS_MEASURE:
+            // state: power applied, electrical measurements
+            // possible transitions
+            // 21 -> OPEN (AUTO)
             if (debug) eprintf("Measure Init\n");
             // transition 21 to operation enable
             // this should be automatic
             break;
         case EPOS_OPEN:
+            // state: no faults detected, power applied
+            // THIS IS THE DEFAULT POWER ENABLED STATE
+            // possible transitions
+            // 5 -> SWO (manual, not needed)
+            // 8 -> RSO (manual, not needed)
+            // 9 -> SOD (manual, via function)
+            // 11 -> QUICKS (manual, via QuickStop pin)
             if (debug) eprintf("Operation enable\n");
             // transition 5 to switched on
             // transition 8 to readdy to switch on
             // transition 9 to switch on disabled
             // transition 11 to quick stop active
+            
+            /* implement QuickStop pin handling */
+            
             break;
         case EPOS_QUICKS:
+            // state: QuickStop is active, power applied
+            // this is the QuickStop state. Flip the QS bit to get back into operation
+            // possible transitions
+            // 16 -> OPEN (manual, via QuickStop pin)
+            // 12 -> SOD (manual, via function)
             if (debug) eprintf("Quick Stop Active\n");
             // transition 16 to operation enable
             // transition 12 to switch on disabled
+            
+            /* implement QuickStop pin handling */
+            
             break;
         case EPOS_FRAD:
+            // state: fault detected, drive function disabled
+            // possible transitions (entry from 13, fault during power disabled)
+            // 14 -> FAULT (AUTO)
             if (debug) eprintf("Fault Reaction Active (disabled)\n");
-            // transition 18 to fault
             break;
         case EPOS_FRAE:
+            // state: fault detected, quick stop is being executed, drive function enabled and power active
+            // after FRAE completes, transition to fault automatically via 18
+            // possible transitions (entry from 17, fault during power enabled)
+            // 18 -> FAULT (AUTO)
             if (debug) eprintf("Fault Reaction Active (enabled)\n");
-            // transition 14 to fault
             break;
         case EPOS_FAULT:
+            // possible transitions
+            // 15 -> SOD (manual, via function)
             if (debug) eprintf("Fault\n");
-            // transition 15 to switch on disabled
             break;
         default:
             eprintf("Bored to input codes. Unknown code %04x\n", EPOS_drive.EPOS_State[idx]);
@@ -650,7 +729,7 @@ int     epos_can_do_PPM (int idx) {
     return EPOS_drive.EPOS_PPMState[idx] == PPM_Ready;
 }
 
-int     epos_do_move (int idx, INTEGER32 position) {
+int     epos_do_move_PPM (int idx, INTEGER32 position) {
     
     if (epos_can_do_PPM(idx)) {
         // load the position into 0x4062[idx+1]
@@ -701,4 +780,38 @@ void    epos_halt (int idx) {
 void    epos_execute (int idx) {
     
     CLEAR_BIT(ControlWord[idx], 8);
+}
+
+
+void    epos_enable_drive (int idx) {
+    
+    /* enables the drive function. Drive must be in SOD */
+    
+    if (EPOS_drive.EPOS_State[idx] == EPOS_SOD) {
+        
+        /* do transition 2 */
+        SET_BIT (ControlWord[idx], 2);
+        SET_BIT (ControlWord[idx], 1);
+        CLEAR_BIT (ControlWord[idx], 0);
+    }
+}
+
+void    epos_disable_drive (int idx) {
+    
+    /* disables the drive function. Drive must be either OPEN or QUICKS */
+
+    if (EPOS_drive.EPOS_State[idx] == EPOS_OPEN || EPOS_drive.EPOS_State[idx] == EPOS_QUICKS) {
+        
+        /* do transition 9/12 via Voltage Disable */
+        CLEAR_BIT (ControlWord[idx], 1);
+    }    
+}
+
+void    epos_fault_reset (int idx) {
+    
+    if (EPOS_drive.EPOS_State[idx] == EPOS_FAULT) {
+        
+        /* do transition 15 via Fault Reset */
+        SET_BIT (ControlWord[idx], 7);
+    }
 }

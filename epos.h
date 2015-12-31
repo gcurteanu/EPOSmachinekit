@@ -131,8 +131,7 @@ int     epos_add_slave (UNS8 slaveid);
 // EPOS PPM routines
 void    update_PPM (int idx);
 int     epos_can_do_PPM (int idx);
-int     epos_do_move (int idx, INTEGER32 position);
-int     epos_in_position (int idx);
+int     epos_do_move_PPM (int idx, INTEGER32 position);
 
 // EPOS generic routines
 void    epos_set_absolute (int idx);
@@ -141,6 +140,11 @@ void    epos_set_continuous (int idx);
 void    epos_set_segmented (int idx);
 void    epos_halt (int idx);
 void    epos_execute (int idx);
+int     epos_in_position (int idx);
 
+// EPOS drive control
+void    epos_enable_drive (int idx);
+void    epos_disable_drive (int idx);
+void    epos_fault_reset (int idx);
 
 #endif
