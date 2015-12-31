@@ -530,12 +530,12 @@ int main(int argc,char **argv)
 	ds302_start (&EPOScontrol_Data);
 	LeaveMutex();
 
-    ds302_setHeartbeat (&EPOScontrol_Data, 0x01, 75);
+    //ds302_setHeartbeat (&EPOScontrol_Data, 0x01, 75);
 
 
 	//printStatusword ();
 
-	eprintf ("EPOS loop started, waiting for enabled!\n");
+	eprintf ("EPOS loop started, waiting for boot to complete!\n");
 
 	while (ds302_status(&EPOScontrol_Data) != BootCompleted) sleep_ms(100);
 
@@ -549,91 +549,111 @@ int main(int argc,char **argv)
 
 	eprintf ("EPOS ready for operation!\n");
 	eprintf ("Setting PPM params\n");
-//#ifdef _NOT_USED_
+
 	EnterMutex();
-	SET_BIT(ControlWord[0], 5); // 1 start immmediately, interrupt in progress if any. 0 finish previous first
-	CLEAR_BIT(ControlWord[0], 6); // 0 absolute, 1 relative
-	// to make the stupid thing move, you put it to 1, and then to 0 to start
-	//SET_BIT(ControlWord, 4); // 1 assumes target, 0 does not assume target
-	CLEAR_BIT(ControlWord[0], 8); // 0 execute, 1 halt
-#ifdef MAN_PDO
-        sendPDOevent(&EPOScontrol_Data);
-#endif
-	LeaveMutex();
-//#endif
+
+    //epos_set_continuous (0);
+    epos_set_segmented(0);
+    epos_set_absolute (0);
+    epos_execute (0);
+
+	///SET_BIT(ControlWord[0], 5); // 1 start immmediately, interrupt in progress if any. 0 finish previous first
+	///CLEAR_BIT(ControlWord[0], 6); // 0 absolute, 1 relative
+	///CLEAR_BIT(ControlWord[0], 8); // 0 execute, 1 halt
 
     VelocityDemandValue[0] = 1000;
 
-#define CYCLES		10000
-#define STEP_SIZE	50
-#define SLEEP_TIME	8500
+    // load values to the drive
+    sendPDOevent(&EPOScontrol_Data);
 
-	int	i;
-	for (i=0; i<CYCLES; i++) {
-		eprintf ("%d ", i);
-		int newposition = i * STEP_SIZE;
-#ifdef MAN_PDO
-		EnterMutex();
-#endif
-		//Target_Position = newposition;
-		SET_BIT(ControlWord[0], 4); // 1 means NEW setpoint, it's cleared in callback once ACK
-		//Target_Position = newposition;
-        PositionDemandValue[0] = newposition;        
-#ifdef MAN_PDO
-        sendOnePDOevent(&EPOScontrol_Data, 1);
-        sendOnePDOevent(&EPOScontrol_Data, 0);
-		LeaveMutex();
-#endif
-		//eprintf ("Executing move...\n");
-		sleep_us(SLEEP_TIME);
-	}
+	LeaveMutex();
 
-    eprintf ("done\n");
+    eprintf ("PPM parameters done\n");
 
-    sleep_ms (1000);
+#define CYCLES		200
+#define STEP_SIZE	10000
+#define SLEEP_TIME	10
+#define SETTLE_TIME 100
 
-	for (i=CYCLES; i>=0; i--) {
-                eprintf ("%d ", i);
-                int newposition = i * STEP_SIZE;
-#ifdef MAN_PDO
-                EnterMutex();
-#endif
-                //Target_Position = newposition;
-                SET_BIT(ControlWord[0], 4); // 1 means NEW setpoint, it's cleared in callback once ACK
-                //Target_Position = newposition;
-                PositionDemandValue[0] = newposition;
-#ifdef MAN_PDO
-		sendOnePDOevent(&EPOScontrol_Data, 1);
-        sendOnePDOevent(&EPOScontrol_Data, 0);
-                LeaveMutex();
-#endif
-                //eprintf ("Executing move...\n");      
-                sleep_us(SLEEP_TIME);
+    int     cycle = 0;
 
-	}
-    eprintf ("done\n");
+    INTEGER32   position = 0;
 
-    sleep_ms(100);
+    // run a cycle with the specified periodicity
+    while (1) {
 
-	eprintf ("Moves finished\n");
+        // we do + 1 since we move from 0 to CYCLES.
+        if (cycle>CYCLES)
+            break;
 
-	// wait Ctrl-C
+        EnterMutex();
+        if (epos_do_move(0, position)) {
+            // increment target
+            position += STEP_SIZE;
+            // increment cycle
+            cycle++;
+            //eprintf ("Completed cycle %d\n", cycle);
+        }
+        LeaveMutex();
+        sleep_ms (SLEEP_TIME);
+    };
+
+    // decrement the position to account for the overshoot
+    position -= STEP_SIZE;
+    eprintf ("Forward done, final position executed %ld, cycle=%d\n", position, cycle);
+    eprintf ("Waiting for moves to complete\n");
+
+    while (!epos_in_position(0))
+        sleep_ms (SLEEP_TIME);
+    eprintf ("Servo in position\n");
+
+    sleep_ms(SETTLE_TIME);
+    eprintf ("Reversing...\n");
+
+    // run a cycle with the specified periodicity
+    while (1) {
+
+        if (cycle <= 0)
+            break;
+
+        EnterMutex();
+        if (epos_do_move(0, position)) {
+            // move was OK, increment the value
+            position -= STEP_SIZE;
+            // decrement cycle
+            cycle--;
+            //eprintf ("Completed cycle %d\n", cycle);
+        }
+        LeaveMutex();
+        sleep_ms (SLEEP_TIME);
+    };
+    // increment the position to account for the overshoot
+    position += STEP_SIZE;
+    eprintf ("All moves done, final position is %ld\n", position);
+
+    eprintf ("Waiting for moves to complete\n");
+
+    while (!epos_in_position(0))
+        sleep_ms (SLEEP_TIME);
+    eprintf ("Servo in position\n");
+
+    sleep_ms(SETTLE_TIME);
+
 	//pause();
-    sleep_ms (1000);
 	eprintf("Finishing.\n");
 
 	init_step = 0;
 	bootup = 0;
 
 	EnterMutex();
-        masterSendNMTstateChange (&EPOScontrol_Data, slavenodeid, NMT_Enter_PreOperational);
+    masterSendNMTstateChange (&EPOScontrol_Data, slavenodeid, NMT_Enter_PreOperational);
 	LeaveMutex();
 	eprintf ("Slave set to pre-op\n");
-	sleep_ms(100);
+	sleep_ms(SETTLE_TIME);
 
 	setState (&EPOScontrol_Data, Pre_operational);
 	eprintf ("Master set to pre-op\n");
-	sleep_ms(100);
+	sleep_ms(SETTLE_TIME);
 
 	// Stop master
 	setState(&EPOScontrol_Data, Stopped);
@@ -641,12 +661,11 @@ int main(int argc,char **argv)
 	
 	// Stop timer thread
 	StopTimerLoop(&Exit);
-	
 	eprintf ("Timer loop stopped\n");
 
 fail_master:
-	if(MasterBoard.baudrate) canClose(&EPOScontrol_Data);	
-	eprintf ("CAN closed\n");
+	//if(MasterBoard.baudrate) canClose(&EPOScontrol_Data);	
+	//eprintf ("CAN closed\n");
 
 	TimerCleanup();
   	return 0;
