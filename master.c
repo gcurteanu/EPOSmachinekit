@@ -59,15 +59,10 @@ unsigned int debug = 0;
 uint64_t    almClock = 0;
 uint64_t    almClock2 = 0;                 
 
-UNS32   Profile_Velocity;
-UNS32   Profile_Acceleration;
-UNS32   Profile_Deceleration;
-UNS32   Motion_ProfileType;
-
 //#define USE_HEARTBEAT
 #define HB_INTERVAL_MS		1000
 //#define USE_SYNC
-#define SYNC_INTERVAL_MS 	100
+#define SYNC_INTERVAL_MS 	10
 #define MAN_PDO
 
 
@@ -164,19 +159,7 @@ static int init_step = 0;
 
 void TestMaster_preOperational(CO_Data* d)
 {
-
     eprintf("TestMaster_preOperational\n");
-/*
-	masterSendNMTstateChange (&EPOScontrol_Data, slavenodeid, NMT_Reset_Node);
-*/
-
-	
-/*
-	eprintf("Set slave to preOperational\n");
-	masterSendNMTstateChange (&EPOScontrol_Data, slavenodeid, NMT_Enter_PreOperational);
-	eprintf("Slave set to preOperational\n");
-*/
-
 }
 
 void TestMaster_operational(CO_Data* d)
@@ -185,7 +168,7 @@ void TestMaster_operational(CO_Data* d)
 
 #ifdef USE_SYNC
     UNS32 interval = SYNC_INTERVAL_MS * 1000;
-    UNS32 size = sizeof (interval);               
+    UNS32 size = sizeof (interval);
 
     writeLocalDict( &EPOScontrol_Data, /*CO_Data* d*/
                     0x1006, /*UNS16 index*/
@@ -303,57 +286,18 @@ void catch_signal(int sig)
 }
 #endif
 
-void help(void)
-{
-  printf("**************************************************************\n");
-  printf("*  TestMasterMicroMod                                        *\n");
-  printf("*                                                            *\n");
-  printf("*  A simple example for PC.                                  *\n");
-  printf("*  A CanOpen master that control a MicroMod module:          *\n");
-  printf("*  - setup module TPDO 1 transmit type                       *\n");
-  printf("*  - setup module RPDO 1 transmit type                       *\n");
-  printf("*  - setup module hearbeatbeat period                        *\n");
-  printf("*  - disable others TPDOs                                    *\n");
-  printf("*  - set state to operational                                *\n");
-  printf("*  - send periodic SYNC                                      *\n");
-  printf("*  - send periodic RPDO 1 to Micromod (digital output)       *\n");
-  printf("*  - listen Micromod's TPDO 1 (digital input)                *\n");
-  printf("*  - Mapping RPDO 1 bit per bit (digital input)              *\n");
-  printf("*                                                            *\n");
-  printf("*   Usage:                                                   *\n");
-  printf("*   ./TestMasterMicroMod  [OPTIONS]                          *\n");
-  printf("*                                                            *\n");
-  printf("*   OPTIONS:                                                 *\n");
-  printf("*     -l : Can library [\"libcanfestival_can_virtual.so\"]     *\n");
-  printf("*                                                            *\n");
-  printf("*    Slave:                                                  *\n");
-  printf("*     -i : Slave Node id format [0x01 , 0x7F]                *\n");
-  printf("*                                                            *\n");
-  printf("*    Master:                                                 *\n");
-  printf("*     -m : bus name [\"1\"]                                    *\n");
-  printf("*     -M : 1M,500K,250K,125K,100K,50K,20K,10K                *\n");
-  printf("*                                                            *\n");
-  printf("**************************************************************\n");
-}
 
 /***************************  INIT  *****************************************/
 void InitNodes(CO_Data* d, UNS32 id)
 {
-    /****************************** INITIALISATION MASTER *******************************/
-    if(MasterBoard.baudrate){
-        /* Defining the node Id */
-        // don't set node ID in masters
-        //setNodeId(&EPOScontrol_Data, 0x7F);
-
-        /* init */
-        setState(&EPOScontrol_Data, Initialisation);
-    }
+    /* set to init */
+    setState(&EPOScontrol_Data, Initialisation);
 }
 
 /***************************  EXIT  *****************************************/
 void Exit(CO_Data* d, UNS32 id)
 {
-    masterSendNMTstateChange(&EPOScontrol_Data, 0x7F, NMT_Reset_Node);
+    masterSendNMTstateChange(&EPOScontrol_Data, 0x7F, NMT_Stop_Node);
 
     //Stop master
     setState(&EPOScontrol_Data, Stopped);
@@ -419,53 +363,7 @@ int     ds302_nl_keepalive_nodes_present(CO_Data* d);
 int main(int argc,char **argv)
 {
 
-  int c;
-  extern char *optarg;
   char* LibraryPath= (char *)"libcanfestival_can_socket.so";
-  char *snodeid;
-  while ((c = getopt(argc, argv, "-m:s:M:S:l:i:")) != EOF)
-  {
-    switch(c)
-    {
-      case 'm' :
-        if (optarg[0] == 0)
-        {
-          help();
-          exit(1);
-        }
-        MasterBoard.busname = optarg;
-        break;
-      case 'M' :
-        if (optarg[0] == 0)
-        {
-          help();
-          exit(1);
-        }
-        MasterBoard.baudrate = optarg;
-        break;
-      case 'l' :
-        if (optarg[0] == 0)
-        {
-          help();
-          exit(1);
-        }
-        LibraryPath = optarg;
-        break;
-      case 'i' :
-        if (optarg[0] == 0)
-        {
-          help();
-          exit(1);
-        }
-        snodeid = optarg;
-		sscanf(snodeid,"%x",&slavenodeid);
-        break;
-      default:
-        help();
-        exit(1);
-    }
-  }
-
 
     //setup_dcf ();
     
@@ -515,9 +413,7 @@ int main(int argc,char **argv)
 	StartTimerLoop(&InitNodes);
 
 
-
     // BECOME REALTIME
-
     struct sched_param  param = { .sched_priority = 80 };       
     pthread_setschedparam(pthread_self(), SCHED_FIFO, &param);     
 
@@ -527,9 +423,6 @@ int main(int argc,char **argv)
     //SetAlarm (&EPOScontrol_Data, 0x56789, timer_play2, US_TO_TIMEVAL(TIMER2_USEC), US_TO_TIMEVAL(TIMER2_USEC));    
     //LeaveMutex();
 
-    //sleep_ms (100 * 1000);
-
-    //sleep (100);
 
 	/* doing the boot process in the MAIN loop */
 	
@@ -541,22 +434,12 @@ int main(int argc,char **argv)
 	ds302_start (&EPOScontrol_Data);
 	LeaveMutex();
 
-    //ds302_setHeartbeat (&EPOScontrol_Data, 0x01, 75);
+    ds302_setHeartbeat (&EPOScontrol_Data, 0x01, 60);
 
-
-	//printStatusword ();
 
 	eprintf ("EPOS loop started, waiting for boot to complete!\n");
 
 	while (ds302_status(&EPOScontrol_Data) != BootCompleted) sleep_ms(100);
-
-    // start loop to generate PDOs from a timer loop
-    // timer play
-    // MS_TO_TIMEVAL(ms) or US_TO_TIMEVAL(us) to create the timevalentries
-    //EnterMutex();
-    //SetAlarm (&EPOScontrol_Data, 0x12334, timer_play, US_TO_TIMEVAL(TIMER_USEC), US_TO_TIMEVAL(TIMER_USEC));
-    //LeaveMutex();
-
 
 	eprintf ("EPOS ready for operation!\n");
 	eprintf ("Setting PPM params and enable drive\n");
@@ -583,9 +466,9 @@ int main(int argc,char **argv)
 
     eprintf ("PPM parameters done, ensuring drive is enabled\n");
 
-#define CYCLES		200
+#define CYCLES		400
 #define STEP_SIZE	1000
-#define SLEEP_TIME	1
+#define SLEEP_TIME	10
 #define SETTLE_TIME 100
 
     int     faulted = 0;
@@ -690,6 +573,8 @@ int main(int argc,char **argv)
     sendPDOevent(&EPOScontrol_Data);
     LeaveMutex();
     sleep_ms(SETTLE_TIME);
+
+    pause();
 
 	init_step = 0;
 	bootup = 0;
