@@ -216,28 +216,37 @@ void TestMaster_post_SlaveBootup(CO_Data* d, UNS8 SlaveID) {
 
 void TestMaster_post_SlaveStateChange(CO_Data* d, UNS8 nodeId, e_nodeState newNodeState)
 {
+    /* this will be called if a NMT message / state change (timeout error, etc) happens */
     eprintf ("NMT: TestMaster_post_SlaveStateChange : %02x -> %04x\n", nodeId, newNodeState);
 }
 
 void TestMaster_post_sync(CO_Data* d)
 {
+    /* called after a SYNC is generated */
     if (debug) eprintf("TestMaster_post_SYNC\n");
 }
 
 void TestMaster_post_TPDO(CO_Data* d)
 {
+    /* called at the TPDO transmission */
     if (debug) eprintf("TestMaster_post_TPDO\n");	
 }
 
 void TestMaster_post_emcy (CO_Data* d, UNS8 nodeID, UNS16 errCode, UNS8 errReg, const UNS8 errSpec[5])
 {
-	int	i;
+    /* called for EMCY receive */
+    /* this is the only way to manage received errors*/
 
-	eprintf ("NMT: TestMaster_post_EMCY\n");
-	eprintf ("\t%04x : %04x / %04x\n", nodeID, errCode, errReg);
-	for (i=0; i < 5; i++) {
-		eprintf ("\tERRTBL[%d] = %04x\n", i, errSpec[i]);
-	}
+    eprintf ("NMT: TestMaster_post_EMCY\n");
+    eprintf ("\t%04x : %04x / %04x\n", nodeID, errCode, errReg);
+/*
+    // this displays the remaining 5 bytes of the EMCY
+    // those are unused
+    int	i;
+    for (i=0; i < 5; i++) {
+        eprintf ("\tERRTBL[%d] = %04x\n", i, errSpec[i]);
+    }
+*/
 
     eprintf ("Error register: ");
     
@@ -277,6 +286,8 @@ void TestMaster_post_emcy (CO_Data* d, UNS8 nodeID, UNS16 errCode, UNS8 errReg, 
         eprintf ("  ");
     
     eprintf ("\n");
+    
+    eprintf ("Error detail: %04x -> %s\n", errCode, epos_error_text (errCode));
 }
 
 //s_BOARD SlaveBoard = {"0", "500K"};
