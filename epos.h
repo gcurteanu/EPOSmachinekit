@@ -146,5 +146,8 @@ int     epos_in_position (int idx);
 void    epos_enable_drive (int idx);
 void    epos_disable_drive (int idx);
 void    epos_fault_reset (int idx);
+int     epos_drive_operational (int idx);
+int     epos_drive_faulted (int idx);
+int     epos_drive_disabled (int idx);
 
 #endif

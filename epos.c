@@ -815,3 +815,27 @@ void    epos_fault_reset (int idx) {
         SET_BIT (ControlWord[idx], 7);
     }
 }
+
+int     epos_drive_operational (int idx) {
+    
+    if (EPOS_drive.EPOS_State[idx] == EPOS_OPEN || EPOS_drive.EPOS_State[idx] == EPOS_QUICKS)
+        return 1;
+    
+    return 0;
+}
+
+int     epos_drive_faulted (int idx) {
+    
+    if (EPOS_drive.EPOS_State[idx] == EPOS_FAULT)
+        return 1;
+    
+    return 0;
+}
+
+int     epos_drive_disabled (int idx) {
+    
+    if (EPOS_drive.EPOS_State[idx] != EPOS_OPEN && EPOS_drive.EPOS_State[idx] != EPOS_QUICKS && EPOS_drive.EPOS_State[idx] != EPOS_FAULT)
+        return 1;
+    
+    return 0;
+}
