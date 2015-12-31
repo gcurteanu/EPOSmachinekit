@@ -259,7 +259,7 @@ int     load_dcf_set (dcfset_t *set, const char *filename) {
             }
             
             nodeid = strtol (token, &errcheck, 0);
-            if (token == errcheck || errcheck[0] != 0x00) {
+            if (token == errcheck || errcheck[0] != 0x00 || errno == ERANGE) {
                 printf("Can not convert <%s> to index number, skipping line\n", token);
                 continue;
             }
@@ -288,7 +288,7 @@ int     load_dcf_set (dcfset_t *set, const char *filename) {
             continue;
         
         idx = strtol (token, &errcheck, 0);
-        if (token == errcheck || errcheck[0] != 0x00) {
+        if (token == errcheck || errcheck[0] != 0x00 || errno == ERANGE) {
             printf("Can not convert <%s> to index number, skipping line\n", token);
             continue;
         }
@@ -297,7 +297,7 @@ int     load_dcf_set (dcfset_t *set, const char *filename) {
         if (!token)
             continue;
         subidx = strtol (token, &errcheck, 0);
-        if (token == errcheck || errcheck[0] != 0x00) {
+        if (token == errcheck || errcheck[0] != 0x00 || errno == ERANGE) {
             printf("Can not convert <%s> to subindex number, skipping line\n", token);
             continue;
         }
@@ -306,7 +306,7 @@ int     load_dcf_set (dcfset_t *set, const char *filename) {
         if (!token)
             continue;
         len = strtol (token, &errcheck, 0);
-        if (token == errcheck || errcheck[0] != 0x00) {
+        if (token == errcheck || errcheck[0] != 0x00 || errno == ERANGE) {
             printf("Can not convert <%s> to length, skipping line\n", token);
             continue;
         }
@@ -314,8 +314,8 @@ int     load_dcf_set (dcfset_t *set, const char *filename) {
         token = strtok (NULL, " \t\r\n");
         if (!token)
             continue;
-        data = strtol (token, &errcheck, 0);
-        if (token == errcheck || errcheck[0] != 0x00) {
+        data = (UNS32)strtoll (token, &errcheck, 0);
+        if (token == errcheck || errcheck[0] != 0x00 || errno == ERANGE) {
             printf("Can not convert <%s> to data, skipping line\n", token);
             continue;
         }
