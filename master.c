@@ -559,12 +559,12 @@ int main(int argc,char **argv)
 
 
 	eprintf ("EPOS ready for operation!\n");
-	eprintf ("Setting PPM params\n");
+	eprintf ("Setting PPM params and enable drive\n");
 
 	EnterMutex();
 
-    //epos_set_continuous (0);
-    epos_set_segmented(0);
+    epos_set_continuous (0);
+    //epos_set_segmented(0);
     epos_set_absolute (0);
     epos_execute (0);
 
@@ -574,17 +574,43 @@ int main(int argc,char **argv)
 
     VelocityDemandValue[0] = 1000;
 
+    epos_enable_drive (0);
+    epos_set_mode (0, EPOS_MODE_PPM);
     // load values to the drive
     sendPDOevent(&EPOScontrol_Data);
 
 	LeaveMutex();
 
-    eprintf ("PPM parameters done\n");
+    eprintf ("PPM parameters done, ensuring drive is enabled\n");
 
 #define CYCLES		200
-#define STEP_SIZE	10000
-#define SLEEP_TIME	10
+#define STEP_SIZE	1000
+#define SLEEP_TIME	1
 #define SETTLE_TIME 100
+
+    int     faulted = 0;
+    // wait to become operational
+    while (!epos_drive_operational(0)) {
+        if (epos_drive_faulted(0)) {
+            // try to clear fault
+            eprintf ("Faulted, try to clear fault ()\n");
+            EnterMutex();
+            epos_fault_reset(0);
+            sendPDOevent(&EPOScontrol_Data);
+            LeaveMutex();
+            faulted++;
+        } else if (epos_drive_disabled(0) && faulted) {
+            // we end up here after a fault reset
+            printf ("Fault cleared, try to start ()\n");
+            EnterMutex();
+            epos_enable_drive(0);
+            sendPDOevent(&EPOScontrol_Data);
+            LeaveMutex();        
+        }
+        sleep_ms (SLEEP_TIME);
+    }
+
+    eprintf ("Drive is ready for operation\n");
 
     int     cycle = 0;
 
@@ -597,8 +623,11 @@ int main(int argc,char **argv)
         if (cycle>CYCLES)
             break;
 
+        if (epos_drive_faulted(0) || epos_drive_disabled(0))    // bail out on error
+            break;
+
         EnterMutex();
-        if (epos_do_move(0, position)) {
+        if (epos_do_move_PPM(0, position)) {
             // increment target
             position += STEP_SIZE;
             // increment cycle
@@ -627,8 +656,11 @@ int main(int argc,char **argv)
         if (cycle <= 0)
             break;
 
+        if (epos_drive_faulted(0) || epos_drive_disabled(0))    // bail out on error
+            break;
+
         EnterMutex();
-        if (epos_do_move(0, position)) {
+        if (epos_do_move_PPM(0, position)) {
             // move was OK, increment the value
             position -= STEP_SIZE;
             // decrement cycle
@@ -652,6 +684,12 @@ int main(int argc,char **argv)
 
 	//pause();
 	eprintf("Finishing.\n");
+
+    EnterMutex();    
+    epos_disable_drive (0);
+    sendPDOevent(&EPOScontrol_Data);
+    LeaveMutex();
+    sleep_ms(SETTLE_TIME);
 
 	init_step = 0;
 	bootup = 0;
