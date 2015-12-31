@@ -48,6 +48,18 @@ typedef enum {
     PPM_Running = 0x01,
 } PPM_State_t;
 
+typedef enum {
+    EPOS_MODE_HMM = 6,  // homing
+    EPOS_MODE_PVM = 3,  // profile velocity
+    EPOS_MODE_PPM = 1,  // profile position
+    EPOS_MODE_POS = -1, // position mode
+    EPOS_MODE_VEL = -2, // velocity mode
+    EPOS_MODE_AMP = -3, // current mode
+    EPOS_MODE_DIA = -4, // diagnostic mode
+    EPOS_MODE_MEM = -5, // master encoder mode
+    EPOS_MODE_SDM = -6, // step/direction mode
+} EPOS_DriveMode_t;
+
 typedef struct {
     // the CanFestival object
     CO_Data*    d;
@@ -149,5 +161,8 @@ void    epos_fault_reset (int idx);
 int     epos_drive_operational (int idx);
 int     epos_drive_faulted (int idx);
 int     epos_drive_disabled (int idx);
+
+void    epos_set_mode (int idx, EPOS_DriveMode_t);
+EPOS_DriveMode_t    epos_get_mode (int idx);
 
 #endif

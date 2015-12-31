@@ -733,7 +733,9 @@ int     epos_can_do_PPM (int idx) {
     update_PPM (idx);
     
     // ensure we're in the proper PPM and also the drive is OPERATIONAL
-    return EPOS_drive.EPOS_PPMState[idx] == PPM_Ready && epos_drive_operational(idx);
+    return EPOS_drive.EPOS_PPMState[idx] == PPM_Ready &&
+        epos_drive_operational(idx) &&
+        epos_get_mode (idx) == EPOS_MODE_PPM;
 }
 
 int     epos_do_move_PPM (int idx, INTEGER32 position) {
@@ -845,4 +847,14 @@ int     epos_drive_disabled (int idx) {
         return 1;
     
     return 0;
+}
+
+void    epos_set_mode (int idx, EPOS_DriveMode_t mode) {
+    
+    OperationMode[idx] = mode;
+}
+
+EPOS_DriveMode_t    epos_get_mode (int idx) {
+    
+    return OperationModeDisplay[idx];
 }
