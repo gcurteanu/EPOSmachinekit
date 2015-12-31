@@ -134,4 +134,13 @@ int     epos_can_do_PPM (int idx);
 int     epos_do_move (int idx, INTEGER32 position);
 int     epos_in_position (int idx);
 
+// EPOS generic routines
+void    epos_set_absolute (int idx);
+void    epos_set_relative (int idx);
+void    epos_set_continuous (int idx);
+void    epos_set_segmented (int idx);
+void    epos_halt (int idx);
+void    epos_execute (int idx);
+
+
 #endif

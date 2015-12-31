@@ -672,3 +672,33 @@ int     epos_in_position (int idx) {
     
     return BIT_IS_SET (StatusWord[idx], 10);
 }
+
+void    epos_set_absolute (int idx) {
+    
+    CLEAR_BIT(ControlWord[idx], 6);
+}
+
+void    epos_set_relative (int idx) {
+    
+    SET_BIT(ControlWord[idx], 6);
+}
+
+void    epos_set_continuous (int idx) {
+    
+    SET_BIT(ControlWord[idx], 5);
+}
+
+void    epos_set_segmented (int idx) {
+    
+    CLEAR_BIT(ControlWord[idx], 5);
+}
+
+void    epos_halt (int idx) {
+    
+    SET_BIT(ControlWord[idx], 8);
+}
+
+void    epos_execute (int idx) {
+    
+    CLEAR_BIT(ControlWord[idx], 8);
+}
