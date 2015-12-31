@@ -498,7 +498,11 @@ int     epos_get_slave_index (UNS8 slaveid) {
  *
  */
 
+#ifdef __DEBUG__
 static int debug = 1;
+#else
+static int debug = 0;
+#endif
 static UNS32 _statusWordCB (CO_Data * d, const indextable *idxtbl, UNS8 bSubindex) {
     
     // idx is the OD entry, bSubindex is the array item in it (eq. drive idx + 1)
