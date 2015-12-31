@@ -725,8 +725,11 @@ void    update_PPM (int idx) {
 */
 int     epos_can_do_PPM (int idx) {
     
+    // update the PPM state
     update_PPM (idx);
-    return EPOS_drive.EPOS_PPMState[idx] == PPM_Ready;
+    
+    // ensure we're in the proper PPM and also the drive is OPERATIONAL
+    return EPOS_drive.EPOS_PPMState[idx] == PPM_Ready && epos_drive_operational(idx);
 }
 
 int     epos_do_move_PPM (int idx, INTEGER32 position) {
