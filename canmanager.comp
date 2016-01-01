@@ -1,0 +1,284 @@
+component canmanager;
+
+pin in s32 pin_position_cmd  """Value read from 1st Slave's COBID configured in inputs""";
+pin in s32 pin_velocity_cmd  """Value read from 2nd Slave's COBID configured in inputs""";
+pin out s32 pin_position_fb  """Value sent to 1st Slave's COBID configured in outputs""";
+pin out s32 pin_velocity_fb  """Value sent to 2nd Slave's COBID configured in outputs""";
+
+option extra_setup;
+option extra_cleanup;
+//option constructable no;
+option singleton yes;
+
+function update fp;
+
+license "GPLv3";
+author "Gabriel Curteanu"; 
+;;
+
+#include <unistd.h>
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+#include <signal.h>
+//#include </usr/local/include/canfestival/config.h> //you have to specify wich config.h you need to use.
+#include <canfestival.h>
+#include "EPOScontrol.h"
+#include "epos.h"
+#include "ds302.h"
+
+#ifdef __CRAP__
+#define MAX_IN 4
+#define MAX_OUT 4
+
+// ******************************************
+// Parámetros de configuración del componente
+// ******************************************
+// Lista de COBIDs del esclavo donde mapear los RPDOs del esclavo
+int inputs[MAX_IN] = {0x60FF , 0 , 0 , 0};
+RTAPI_MP_ARRAY_INT(inputs, MAX_IN, "Slave's COBIDs into which to write values of the component's inputs");
+// Lista de COBIDs del esclaveo donde mapear los TPDOs del esclavo
+int outputs[MAX_OUT] = {0x6063 , 0 , 0 , 0};
+RTAPI_MP_ARRAY_INT(outputs, MAX_OUT, "Slave's COBIDs to read and put their values on the component's outputs");
+// NodeIDs
+int masternodeid[1] = {1};
+int slavenodeid[1] = {2};
+RTAPI_MP_ARRAY_INT(masternodeid, 1, "Master's Node-ID");
+RTAPI_MP_ARRAY_INT(slavenodeid, 1, "Slave's Node-ID");
+// Number of Syncs to let pass between frame transmisions on slave side and on master side
+int slavesyncs[1] = {10,};
+int mastersyncs[1] = {10,};
+RTAPI_MP_ARRAY_INT(mastersyncs, 1, "Syncs between Master's transmissions");
+RTAPI_MP_ARRAY_INT(slavesyncs, 1, "Syncs between Slave's transmissions");
+
+#endif
+
+//Global variables
+CO_Data EPOScontrol_Data;
+
+//RTDM library handle
+void *lib_handle;
+
+//Variables for the setup or in terms of CANOpen Initialisation of the master.
+
+char* LibraryPath="/usr/local/lib/libcanfestival_can_socket.so";
+s_BOARD MasterBoard = {"0", "1M"};
+
+void CanManager_heartbeatError(CO_Data* d, UNS8 heartbeatID)
+{
+    rtapi_print("CanManager_heartbeatError %d\n", heartbeatID);
+}
+
+void CanManager_initialisation(CO_Data* d)
+{
+    rtapi_print("CanManager initializing\n");
+}
+
+void CanManager_preOperational(CO_Data* d)
+{
+    rtapi_print("CanManager is in preOperational mode \n");
+}
+
+
+void CanManager_operational(CO_Data* d)
+{
+    rtapi_print("CanManager_operational\n");
+
+    //This constants are used to start the SYNC signal from the Master LCNC.
+    UNS32 SYNC_TIME = 0x07D0;   // 0x03E8 This value is for a 1000 uSeg SYNC cycle. TODO Garcia: this could be a parameter for this component
+    UNS32 START_SYNC = 0x40000080;  // Reference for this value "CANOpen Memento of Francis Dupin, August 2009", SYNC configuration.
+
+#ifdef __USE_SYNC__
+    UNS32 size = sizeof(UNS32);
+    if (sync_enabled) {
+        //TODO Garcia: SYNC configurartion could be optional using an sync_enable param. But the transmision mode of the PDOs have to be set according to this.
+        //This constant is used to start the SYNC signal from the Master LCNC.
+        /*****************************************
+         *       Set Master to trasmit SYNCs     *
+         *****************************************/
+        writeLocalDict( &EPOScontrol_Data, /*CO_Data* d*/
+                0x1006, /*UNS16 index*/
+                0x00, /*UNS8 subind*/ 
+                &SYNC_TIME, /*void * pSourceData,*/ 
+                &size, /* UNS8 * pExpectedSize*/
+                RW);  /* UNS8 checkAccess */
+
+        writeLocalDict( &EPOScontrol_Data, /*CO_Data* d*/
+                0x1005, /*UNS16 index*/
+                0x00, /*UNS8 subind*/ 
+                &START_SYNC, /*void * pSourceData,*/ 
+                &size, /* UNS8 * pExpectedSize*/
+                RW);  /* UNS8 checkAccess */
+    }
+#endif
+}
+
+void CanManager_stopped(CO_Data* d)
+{
+    rtapi_print("CanManager_stopped\n");
+}
+
+void CanManager_post_sync(CO_Data* d)
+{
+//    rtapi_print(" 0x2000:%2.2d 0x2014:%2.2d 0x2015:%2.2d          \r",MasterMapInt32_1, MasterMapInt32_5, MasterMapInt32_6);
+}
+
+void CanManager_post_TPDO(CO_Data* d)
+{
+    rtapi_print("CanManager_post_TPDO\n");    
+}
+
+void CanManager_post_SlaveBootup(CO_Data* d, UNS8 nodeid)
+{
+    rtapi_print("TestMaster_post_SlaveBootup %x\n", nodeid);
+}
+
+void CanManager_post_SlaveStateChange(CO_Data* d, UNS8 nodeid,  e_nodeState newNodeState)
+{
+    rtapi_print("CanManager_post_SlaveStateChange %x -> %x\n", nodeid, newNodeState);
+}
+
+/***************************  INIT  *****************************************/
+void InitNodes(CO_Data* d, UNS32 id)
+{
+    setState(&EPOScontrol_Data, Initialisation);
+}
+
+/***************************  EXIT  *****************************************/
+void Exit(CO_Data* d, UNS32 id)
+{
+    // is this needed?
+    masterSendNMTstateChange(&EPOScontrol_Data, 0x7F, NMT_Stop_Node);
+
+    //Stop master
+    setState(&EPOScontrol_Data, Stopped);
+}
+
+
+EXTRA_SETUP()
+{
+    rtapi_print ("Timers initialized\n");
+    TimerInit();
+
+    rtapi_print ("Loading PT RT %d\n", dlopen ("libpthread_rt.so", RTLD_NOW | RTLD_GLOBAL) != NULL);
+    //rtapi_print ("Loading RT %d\n", dlopen ("librt.so",  RTLD_NOW | RTLD_GLOBAL) != NULL);
+
+    rtapi_print ("Loading RTDM\n");
+    lib_handle = dlopen ("/usr/lib/librtdm.so", RTLD_NOW | RTLD_GLOBAL);
+    if (!lib_handle)
+        rtapi_print ("RTDM load failed\n");
+
+    rtapi_print ("Loading the driver\n");
+    LoadCanDriver(LibraryPath);
+
+                
+    if(!canOpen(&MasterBoard,&EPOScontrol_Data)){
+        rtapi_print("Cannot open Master Board\n");
+    }
+    else{
+        rtapi_print("Opened Master Board\n");
+    }
+
+
+    // Set the master ID
+    // THE STUPID MASTER ID SET WILL REWRITE THE SDOs/PDOs
+    setNodeId(&EPOScontrol_Data, 0x7F);
+
+    epos_initialize_master (&EPOScontrol_Data, "dcfdata.txt");
+    //display_dcf_set (&EPOS_drive.dcf_data);
+    epos_add_slave (0x01);
+
+    // load the DCF configuration for the master node before starting the timers and such
+    ds302_load_dcf_local (&EPOScontrol_Data);
+
+    // set up callbacks    
+    
+    EPOScontrol_Data.heartbeatError = CanManager_heartbeatError;
+    EPOScontrol_Data.initialisation = CanManager_initialisation;
+    EPOScontrol_Data.preOperational = CanManager_preOperational;
+    EPOScontrol_Data.operational = CanManager_operational;
+    EPOScontrol_Data.stopped = CanManager_stopped;
+    EPOScontrol_Data.post_sync = CanManager_post_sync;
+    EPOScontrol_Data.post_TPDO = CanManager_post_TPDO;
+    EPOScontrol_Data.post_SlaveBootup = CanManager_post_SlaveBootup;
+    EPOScontrol_Data.post_SlaveStateChange = CanManager_post_SlaveStateChange;
+    
+    // Start timer thread
+    StartTimerLoop(&InitNodes);
+
+    // Init DS302
+    OperationMode[0] = 1;
+    ds302_init (&EPOScontrol_Data);
+
+    // kickoff boot process
+    EnterMutex();
+    ds302_start (&EPOScontrol_Data);
+    LeaveMutex();
+
+    rtapi_print("Finishing initialization.\n");
+
+    return 0;
+}
+
+
+EXTRA_CLEANUP()
+{
+    // Reset the slave node for next use (will stop emitting heartbeat)
+    canClose(&EPOScontrol_Data);
+
+    StopTimerLoop(&Exit);
+
+    TimerCleanup();
+
+    if (lib_handle)
+        dlclose (lib_handle);
+
+    rtapi_print ("Canmanager stopped and unloaded\n");
+}
+
+int         boot_done = 0;
+int         init_done = 0;
+INTEGER32   current_position_command = 0;
+
+FUNCTION(update) 
+{
+    //rtapi_print ("update called\n");
+
+    // do drive startup after the manager completed boot
+    if (ds302_status(&EPOScontrol_Data) == BootCompleted && boot_done == 0) {
+            boot_done = 1;
+
+            rtapi_print ("Initialising drive\n");
+            EnterMutex();
+
+            epos_set_continuous (0);
+            //epos_set_segmented(0);
+            epos_set_absolute (0);
+            epos_execute (0);
+
+            VelocityDemandValue[0] = 1000;
+
+            epos_enable_drive (0);
+            epos_set_mode (0, EPOS_MODE_PPM);
+            // load values to the drive
+            sendPDOevent(&EPOScontrol_Data);
+
+            LeaveMutex();
+    }            
+
+    // if we're operational, then work
+    if (epos_drive_operational(0)) {
+
+        // do motion
+        if (pin_position_cmd != current_position_command) {
+            // new move required
+            rtapi_print ("Executing move to %ld\n", pin_position_cmd);
+
+            current_position_command = pin_position_cmd;
+            epos_do_move_PPM(0, current_position_command);
+            
+        }
+
+        pin_position_fb = PositionActualValue[0];
+    }
+}

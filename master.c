@@ -466,8 +466,8 @@ int main(int argc,char **argv)
 
     eprintf ("PPM parameters done, ensuring drive is enabled\n");
 
-#define CYCLES		400
-#define STEP_SIZE	1000
+#define CYCLES		200
+#define STEP_SIZE	10000
 #define SLEEP_TIME	10
 #define SETTLE_TIME 100
 
@@ -523,12 +523,12 @@ int main(int argc,char **argv)
 
     // decrement the position to account for the overshoot
     position -= STEP_SIZE;
-    eprintf ("Forward done, final position executed %ld, cycle=%d\n", position, cycle);
+    eprintf ("Forward done, final position executed %ld, cycle=%d, actual position=%ld\n", position, cycle, PositionActualValue[0]);
     eprintf ("Waiting for moves to complete\n");
 
     while (!epos_in_position(0))
         sleep_ms (SLEEP_TIME);
-    eprintf ("Servo in position\n");
+    eprintf ("Servo in position, actual position=%ld\n", PositionActualValue[0]);
 
     sleep_ms(SETTLE_TIME);
     eprintf ("Reversing...\n");
@@ -555,13 +555,13 @@ int main(int argc,char **argv)
     };
     // increment the position to account for the overshoot
     position += STEP_SIZE;
-    eprintf ("All moves done, final position is %ld\n", position);
+    eprintf ("All moves done, final position is %ld, actual position=%ld\n", position, PositionActualValue[0]);
 
     eprintf ("Waiting for moves to complete\n");
 
     while (!epos_in_position(0))
         sleep_ms (SLEEP_TIME);
-    eprintf ("Servo in position\n");
+    eprintf ("Servo in position, actual position=%ld\n", PositionActualValue[0]);
 
     sleep_ms(SETTLE_TIME);
 
@@ -595,12 +595,12 @@ int main(int argc,char **argv)
 	
 	// Stop timer thread
 	StopTimerLoop(&Exit);
+    TimerCleanup();
 	eprintf ("Timer loop stopped\n");
 
 fail_master:
-	//if(MasterBoard.baudrate) canClose(&EPOScontrol_Data);	
-	//eprintf ("CAN closed\n");
+	if(MasterBoard.baudrate) canClose(&EPOScontrol_Data);	
+	eprintf ("CAN closed\n");
 
-	TimerCleanup();
   	return 0;
 }
