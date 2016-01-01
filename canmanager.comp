@@ -91,7 +91,7 @@ void CanManager_operational(CO_Data* d)
 
 void CanManager_stopped(CO_Data* d)
 {
-    rtapi_print("CanManager_stopped\n");
+    rtapi_print("CANmanager: CB stopped\n");
 }
 
 void CanManager_post_sync(CO_Data* d)
@@ -101,17 +101,17 @@ void CanManager_post_sync(CO_Data* d)
 
 void CanManager_post_TPDO(CO_Data* d)
 {
-    rtapi_print("CanManager_post_TPDO\n");    
+    rtapi_print("CANmanager: CB TPDO\n");    
 }
 
 void CanManager_post_SlaveBootup(CO_Data* d, UNS8 nodeid)
 {
-    rtapi_print("TestMaster_post_SlaveBootup %x\n", nodeid);
+    rtapi_print("CANmanager: CB SlaveBootup %x\n", nodeid);
 }
 
 void CanManager_post_SlaveStateChange(CO_Data* d, UNS8 nodeid,  e_nodeState newNodeState)
 {
-    rtapi_print("CanManager_post_SlaveStateChange %x -> %x\n", nodeid, newNodeState);
+    rtapi_print("CANmanager: CB SlaveStateChange %x -> %x\n", nodeid, newNodeState);
 }
 
 /***************************  INIT  *****************************************/
@@ -123,8 +123,8 @@ void InitNodes(CO_Data* d, UNS32 id)
 /***************************  EXIT  *****************************************/
 void Exit(CO_Data* d, UNS32 id)
 {
-    // is this needed?
-    masterSendNMTstateChange(&EPOScontrol_Data, NMT_MASTER_NODE, NMT_Stop_Node);
+    // is this needed? disable for now
+    // masterSendNMTstateChange(&EPOScontrol_Data, NMT_MASTER_NODE, NMT_Stop_Node);
 
     //Stop master
     setState(&EPOScontrol_Data, Stopped);
@@ -188,7 +188,6 @@ EXTRA_SETUP()
     StartTimerLoop(&InitNodes);
 
     // Init DS302 process
-    OperationMode[0] = 1;
     ds302_init (&EPOScontrol_Data);
 
     // kickoff DS302 boot process
@@ -204,7 +203,18 @@ EXTRA_SETUP()
 
 EXTRA_CLEANUP()
 {
-    // Reset the slave node for next use (will stop emitting heartbeat)
+    // disable the drive
+    if (epos_drive_operational(0)) {
+        EnterMutex();    
+        epos_disable_drive (0);
+        sendPDOevent(&EPOScontrol_Data);
+        LeaveMutex();
+    }
+    
+    // put the master into pre-op
+    setState (&EPOScontrol_Data, Pre_operational);
+
+    // stop the threads and stop the master
     StopTimerLoop(&Exit);
 
     canClose(&EPOScontrol_Data);
@@ -234,17 +244,24 @@ FUNCTION(update)
 
             rtapi_print ("CANmanager: Initialising drives\n");
             EnterMutex();
-
+            
+            // set operation mode
+            epos_set_mode (0, EPOS_MODE_PPM);
+            
+            // set motion type, segmented or continuous
             epos_set_continuous (0);
             //epos_set_segmented(0);
+            
+            // set values as absolute
             epos_set_absolute (0);
+            
+            // set execution for commands
             epos_execute (0);
 
-            VelocityDemandValue[0] = 1000;
-
+            // enable the drive
             epos_enable_drive (0);
-            epos_set_mode (0, EPOS_MODE_PPM);
-            // load values to the drive
+
+            // load values to the drive via PDO (note, above routines are LOCAL)
             sendPDOevent(&EPOScontrol_Data);
 
             LeaveMutex();
@@ -253,13 +270,14 @@ FUNCTION(update)
     // if we're operational, then do work
     if (epos_drive_operational(0)) {
 
-        // do motion
-        if (pin_position_cmd != current_position_command) {
+        // do motion (we can base comparison on the OD object directly)
+        if (pin_position_cmd != PositionDemandValue[0]) {
             // new move required
             rtapi_print ("CANmanager: Executing move to %ld\n", pin_position_cmd);
 
-            current_position_command = pin_position_cmd;
-            epos_do_move_PPM(0, current_position_command);
+            epos_do_move_PPM(0, pin_position_cmd);
+            // if the move succeeds, it will update the PositionDemandValue with the param value
+            // this way, we'll re-execute the move automatically if for whatever reason was not executed
         }
 
         // load the feedback value
