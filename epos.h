@@ -61,6 +61,32 @@ typedef enum {
 } EPOS_DriveMode_t;
 
 typedef struct {
+    UNS16   idx;
+    UNS8    sub;
+    UNS32   size;
+    void    *data;
+} SDO_item_t;
+
+#define MAX_SDO_ITEMS   16
+
+typedef enum {
+    SDO_READ,
+    SDO_WRITE,
+    SDO_INIT,
+    SDO_FINISH,
+} SDO_transfer_type_t;
+
+typedef struct {
+    SDO_item_t  items[MAX_SDO_ITEMS];
+    int         count;
+    int         cursor;
+    UNS8        state;
+    UNS32       error;
+    SDO_transfer_type_t
+                type;
+} SDO_transfer_t;
+
+typedef struct {
     // the CanFestival object
     CO_Data*    d;
     
@@ -130,6 +156,9 @@ typedef struct {
     char        out_c_pin[MAX_EPOS_DRIVES];      // OUT C
     char        out_d_pin[MAX_EPOS_DRIVES];      // OUT D
 
+    
+    // SDO transfer data, per node
+    SDO_transfer_t  sdos[MAX_EPOS_DRIVES];
 } EPOS_drive_t;
 
 extern EPOS_drive_t EPOS_drive;
@@ -164,5 +193,8 @@ int     epos_drive_disabled (int idx);
 
 void    epos_set_mode (int idx, EPOS_DriveMode_t);
 EPOS_DriveMode_t    epos_get_mode (int idx);
+
+
+
 
 #endif

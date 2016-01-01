@@ -463,6 +463,10 @@ int     epos_initialize_master (CO_Data * d, const char * dcf_file) {
             0x1800 + idx, 0x01, &COB_ID, &size, 0);
     }
 
+    // clear the SDO data
+    EPOS_drive.sdo_error = OD_SUCCESSFUL;
+    EPOS_drive.sdo_state = SDO_RESET;
+    
     return 1;
 }
 
@@ -857,4 +861,52 @@ void    epos_set_mode (int idx, EPOS_DriveMode_t mode) {
 EPOS_DriveMode_t    epos_get_mode (int idx) {
     
     return OperationModeDisplay[idx];
+}
+
+
+void    _init_sdo_transfer (int idx) {
+
+    EPOS_drive.sdos[idx].count = 0;
+    EPOS_drive.sdos[idx].cursor = -1;
+    EPOS_drive.sdos[idx].state = SDO_RESET;
+    EPOS_drive.sdos[idx].error = OD_SUCCESSFUL;
+    EPOS_drive.sdos[idx].type = SDO_INIT;
+}
+
+int     _add_sdo_transfer (int idx, UNS16 obj, UNS8 sub, UNS32 size, void *data) {
+        
+    if (EPOS_drive.sdos[idx].count >= MAX_SDO_ITEMS)
+        return 0;
+    
+    EPOS_drive.sdos[idx].items[EPOS_drive.sdos[idx].count].idx = obj;
+    EPOS_drive.sdos[idx].items[EPOS_drive.sdos[idx].count].sub = sub;
+    EPOS_drive.sdos[idx].items[EPOS_drive.sdos[idx].count].size = size;
+    EPOS_drive.sdos[idx].items[EPOS_drive.sdos[idx].count].data = data;
+    
+    EPOS_drive.sdos[idx].count++;
+    
+    return 1;
+}
+
+int     _execute_sdo_transfer (int idx, SDO_transfer_type_t type) {
+    
+    // empty?
+    if (EPOS_drive.sdos[idx].count < 1)
+        return 0;
+    
+    // invalid type
+    if (type != SDO_READ && type != SDO_WRITE)
+        return 0;
+    
+    EPOS_drive.sdos[idx].type = type;
+    EPOS_drive.sdos[idx].cursor = -1;
+    
+    // go to the transfer routine. The routine will 
+    _sdo_handler (EPOS_data.d, EPOS_drive.epos_slaves[idx]);
+}
+
+int     _get_sdo_transfer_result (int idx) {
+    
+    
+    
 }
