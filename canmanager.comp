@@ -205,10 +205,10 @@ EXTRA_SETUP()
 EXTRA_CLEANUP()
 {
     // Reset the slave node for next use (will stop emitting heartbeat)
-    // canClose(&EPOScontrol_Data);
-
     StopTimerLoop(&Exit);
 
+    canClose(&EPOScontrol_Data);
+    
     TimerCleanup();
 
     if (rtdm_lib_handle)
