@@ -464,8 +464,6 @@ int     epos_initialize_master (CO_Data * d, const char * dcf_file) {
     }
 
     // clear the SDO data
-    EPOS_drive.sdo_error = OD_SUCCESSFUL;
-    EPOS_drive.sdo_state = SDO_RESET;
     
     return 1;
 }
@@ -902,7 +900,7 @@ int     _execute_sdo_transfer (int idx, SDO_transfer_type_t type) {
     EPOS_drive.sdos[idx].cursor = -1;
     
     // go to the transfer routine. The routine will 
-    _sdo_handler (EPOS_data.d, EPOS_drive.epos_slaves[idx]);
+    //_sdo_handler (EPOS_data.d, EPOS_drive.epos_slaves[idx]);
 }
 
 int     _get_sdo_transfer_result (int idx) {
