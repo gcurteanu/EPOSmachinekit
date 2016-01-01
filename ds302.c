@@ -1165,8 +1165,8 @@ int ds302_all_mandatory_booted (CO_Data* d)
             if (*(UNS32 *)Object1F81->pSubindex[nodeid].pObject & DS302_NL_MANDATORY) {
                 // node is mandatory
                 if (DATA_SM(ds302_data._bootSlave[nodeid]).state != BootCompleted) {
-                    DS302_DEBUG("Mandatory slave not booted\n");
-                    eprintf ("Slave ID is %d, state is %d\n", nodeid, DATA_SM(ds302_data._bootSlave[nodeid]).state);
+                    DS302_DEBUG ("Mandatory slave not booted\n");
+                    DS302_DEBUG ("Slave ID is %d, state is %d\n", nodeid, DATA_SM(ds302_data._bootSlave[nodeid]).state);
                     return 0;
                 }
             }
