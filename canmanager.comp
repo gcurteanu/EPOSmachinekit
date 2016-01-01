@@ -1,9 +1,13 @@
 component canmanager;
 
-pin in s32 pin_position_cmd  """Position command""";
-pin in s32 pin_velocity_cmd  """Velocity command""";
-pin out s32 pin_position_fb  """Position feedback""";
-pin out s32 pin_velocity_fb  """Velocity feedback""";
+// DS302 boot completed
+pin out bit boot_complete   """DS302 boot completed""";
+
+
+//pin in s32 #.pin_position_cmd[5]  """Position command""";
+//pin in s32 #.pin_velocity_cmd[5]  """Velocity command""";
+//pin out s32 #.pin_position_fb[5]  """Position feedback""";
+//pin out s32 #.pin_velocity_fb[5]  """Velocity feedback""";
 
 option extra_setup;
 option extra_cleanup;
@@ -28,6 +32,24 @@ author "Gabriel Curteanu";
 #include "ds302.h"
 
 #define NMT_MASTER_NODE     0x7F
+
+int slaveid[MAX_EPOS_DRIVES] = { 0, 0, 0, 0, 0 };
+RTAPI_MP_ARRAY_INT(slaveid,MAX_EPOS_DRIVES,"CAN slave IDs controlled by this master");
+int master_can_id = 0x7F;
+RTAPI_MP_INT(master_can_id,"The master's CAN ID");
+char *dcf = NULL;
+RTAPI_MP_STRING(dcf, "The DCF initialisation data");
+
+typedef struct {
+    hal_u32_t   slavecount;
+    hal_u32_t   slave_id[MAX_EPOS_DRIVES];
+    hal_float_t position_scale[MAX_EPOS_DRIVES];
+    hal_float_t *position_command[MAX_EPOS_DRIVES];
+    hal_float_t *position_feedback[MAX_EPOS_DRIVES];
+    hal_s32_t   *position_counts[MAX_EPOS_DRIVES];
+} canmanager_t;
+
+static canmanager_t *canmanager;
 
 //Global variables
 CO_Data EPOScontrol_Data;
@@ -133,13 +155,67 @@ void Exit(CO_Data* d, UNS32 id)
 
 EXTRA_SETUP()
 {
+    if (!dcf) {
+        rtapi_print ("CANmanager: DCF file not provided, unable to load\n");
+        return 1;
+    }
+
+    canmanager = hal_malloc(sizeof(canmanager_t));
+    if (!canmanager)
+        return 1;
+
+    // load the params
+    int i;
+    for (i = 0; i < MAX_EPOS_DRIVES; i++)
+        if (slaveid[i] != 0) {
+            canmanager->slave_id[canmanager->slavecount++] = slaveid[i];
+        }
+
+    int     retcode;
+
+    retcode = hal_param_u32_newf (HAL_RO, &canmanager->slavecount, comp_id,
+        "%s.slave-count", prefix);
+    if (retcode != 0) { return retcode; }
+
+    // comp_id = already set
+    // prefix = the component prefix
+    rtapi_print ("Component ID is %d\n", comp_id);
+
+    // create the pins
+
+    for (i = 0; i < canmanager->slavecount; i++) {
+        int retcode;
+
+        retcode = hal_pin_float_newf(HAL_IN, &canmanager->position_command[i], comp_id,
+        "%s.%d.position-cmd", prefix, i);
+        if (retcode != 0) { return retcode; }
+
+        retcode = hal_pin_s32_newf(HAL_OUT, &canmanager->position_counts[i], comp_id,
+        "%s.%d.counts", prefix, i);
+        if (retcode != 0) { return retcode; }
+
+        retcode = hal_pin_float_newf(HAL_OUT, &canmanager->position_feedback[i], comp_id,  
+        "%s.%d.position-fb", prefix, i);
+        if (retcode != 0) { return retcode; }
+
+        retcode = hal_param_u32_newf (HAL_RO, &canmanager->slave_id[i], comp_id,
+        "%s.%d.slave-id", prefix, i);
+        if (retcode != 0) { return retcode; }
+
+        retcode = hal_param_float_newf (HAL_RW, &canmanager->position_scale[i], comp_id,
+        "%s.%d.position-scale", prefix, i);
+        if (retcode != 0) { return retcode; }
+
+        canmanager->position_scale[i] = 1;
+    }
+
     rtapi_print ("CANmanager: Load libpthread_rt.so\n");
     pthread_lib_handle = dlopen ("libpthread_rt.so", RTLD_NOW | RTLD_GLOBAL);
     if (!pthread_lib_handle) {
         rtapi_print ("CANmanager: pthread_rt load failed\n");
         return 1;
     }
-    
+
     rtapi_print ("CANmanager: Loading librtdm.so\n");
     rtdm_lib_handle = dlopen ("/usr/lib/librtdm.so", RTLD_NOW | RTLD_GLOBAL);
     if (!rtdm_lib_handle) {
@@ -164,11 +240,14 @@ EXTRA_SETUP()
     setNodeId(&EPOScontrol_Data, NMT_MASTER_NODE);
 
     // initialize the master
-    epos_initialize_master (&EPOScontrol_Data, "dcfdata.txt");
+    epos_initialize_master (&EPOScontrol_Data, dcf);
     //display_dcf_set (&EPOS_drive.dcf_data);
     
     // add the defined slave nodeids
-    epos_add_slave (0x01);
+    for (i = 0; i < canmanager->slavecount; i++) {
+        rtapi_print ("Adding slave id %02x\n", canmanager->slave_id[i]);
+        epos_add_slave (canmanager->slave_id[i]);
+    }
 
     // load the DCF configuration for the master node before starting the timers and such
     ds302_load_dcf_local (&EPOScontrol_Data);
@@ -227,6 +306,7 @@ EXTRA_CLEANUP()
     if (pthread_lib_handle)
         dlclose (pthread_lib_handle);
 
+
     rtapi_print ("CANmanager: stopped and unloaded\n");
 }
 
@@ -236,6 +316,7 @@ INTEGER32   current_position_command = 0;
 
 FUNCTION(update) 
 {
+    int     i;
     //rtapi_print ("update called\n");
 
     // do drive startup after the manager completed boot
@@ -245,21 +326,23 @@ FUNCTION(update)
             rtapi_print ("CANmanager: Initialising drives\n");
             EnterMutex();
             
-            // set operation mode
-            epos_set_mode (0, EPOS_MODE_PPM);
+            for (i = 0; i < canmanager->slavecount; i++) {
+                // set operation mode
+                epos_set_mode (i, EPOS_MODE_PPM);
             
-            // set motion type, segmented or continuous
-            epos_set_continuous (0);
-            //epos_set_segmented(0);
+                // set motion type, segmented or continuous
+                epos_set_continuous (i);
+                //epos_set_segmented(0);
             
-            // set values as absolute
-            epos_set_absolute (0);
+                // set values as absolute
+                epos_set_absolute (i);
             
-            // set execution for commands
-            epos_execute (0);
+                // set execution for commands
+                epos_execute (i);
 
-            // enable the drive
-            epos_enable_drive (0);
+                // enable the drive
+                epos_enable_drive (i);
+            }
 
             // load values to the drive via PDO (note, above routines are LOCAL)
             sendPDOevent(&EPOScontrol_Data);
@@ -267,20 +350,30 @@ FUNCTION(update)
             LeaveMutex();
     }            
 
-    // if we're operational, then do work
-    if (epos_drive_operational(0)) {
+    for (i = 0; i < canmanager->slavecount ; i++) {
 
-        // do motion (we can base comparison on the OD object directly)
-        if (pin_position_cmd != PositionDemandValue[0]) {
-            // new move required
-            rtapi_print ("CANmanager: Executing move to %ld\n", pin_position_cmd);
+        // if we're operational, then do work
+        if (epos_drive_operational(i)) {
 
-            epos_do_move_PPM(0, pin_position_cmd);
-            // if the move succeeds, it will update the PositionDemandValue with the param value
-            // this way, we'll re-execute the move automatically if for whatever reason was not executed
+            // calculate target position
+            hal_s32_t   demandpos = (hal_s32_t)(*(canmanager->position_command[i]) * canmanager->position_scale[i]);
+            // do motion (we can base comparison on the OD object directly)
+            if (demandpos != PositionDemandValue[i]) {
+                // new move required
+                // rtapi_print ("CANmanager: Executing move to %ld from %ld [%d]\n", demandpos, PositionDemandValue[i], i);
+
+                EnterMutex();
+                epos_do_move_PPM(i, demandpos);
+                LeaveMutex();
+                // if the move succeeds, it will update the PositionDemandValue with the param value
+                // this way, we'll re-execute the move automatically if for whatever reason was not executed
+            }
+
+            // load the feedback value
+            *(canmanager->position_counts[i]) = PositionActualValue[i];
+
+            // calculate position in units
+            *(canmanager->position_feedback[i]) = *(canmanager->position_counts[i]) / canmanager->position_scale[i];
         }
-
-        // load the feedback value
-        pin_position_fb = PositionActualValue[0];
     }
 }
