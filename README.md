@@ -217,3 +217,13 @@ For updating PDOs, the following rules must be observed (per CiA 301)
   4. Re-enable the PDO
 
 
+
+
+
+
+# Credits:
+
+- The CanFestival team for creating it, it's really hard to get into it but once you 'get' how it works, it's really easy to use successfully. 
+- Fernando Medero because his code showed it's possible to integrate CanFestival with LinuxCNC
+- The Machinekit team for enabling the use of Xenomai (The previous attempt to make RTAI behave with CanFestival and socket CAN was an absolute failure, leading to the move to Machinekit/Xenomai)
+
