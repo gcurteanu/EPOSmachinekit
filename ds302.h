@@ -8,13 +8,15 @@
 #define DS302_DEVICE_START_ALL_SLAVES   0x02    // perform a broadcast to start all slaves
 #define DS302_DEVICE_MANUAL_OPERATIONAL 0x04    // enter operational state manually
 #define DS302_DEVICE_MANUAL_START_SLAVE 0x08    // application will start the slaves
-#define DS302_DEVICE_ONERROR_MANDATORY  0x10    // reset ALL slaves if a mandatory has an error
+#define DS302_DEVICE_ONERROR_RESETALL   0x10    // if mandatory errors out, reset all nodes (including self)
+#define DS302_DEVICE_FLYING_MASTER      0x20    // not implemented / supported
+#define DS302_DEVICE_ONERROR_STOPALL    0x40    // if mandatory errors out, stop all nodes (including self)
 
 // 0x1F89 - maximum time to wait for all mandatory slaves
 
 // 0x1F81 network list
 #define DS302_NL_IS_SLAVE               0x01
-#define DS302_NL_ONBOOT_START_ERROR_CTL 0x02
+#define DS302_NL_ONBOOT_START_ERROR_CTL 0x02    // this was made obsolete
 #define DS302_NL_ONBOOT_START_SLAVE     0x04
 #define DS302_NL_MANDATORY              0x08
 #define DS302_NL_DONOT_RESET            0x10
@@ -260,7 +262,6 @@ ds302_boot_state_t  ds302_node_status (CO_Data*, UNS8);
 _sm_BootSlave_Codes ds302_node_result (CO_Data*, UNS8);
 /* Gets a slave's CAN error */
 UNS32   ds302_node_error (CO_Data*, UNS8);
-
 
 /* DCF data defines/routines */
 int     ds302_get_next_dcf (UNS8 *data, UNS32 *cursor, UNS16 *idx, UNS8 *subidx, UNS32 *size, UNS32 *value);

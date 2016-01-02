@@ -70,6 +70,10 @@ INIT_SM_TYPE(BOOTSLAVE,_sm_BootSlave_States,SDOCallback_t,
 // declare the master ds302_data structure
 ds302_t     ds302_data;
 
+
+void    _onSlaveBootCB (CO_Data*, UNS8);
+void    _onEMCY (CO_Data*, UNS8, UNS16, UNS8, const UNS8*);
+
 const char* _sm_BootSlave_CodeToText[] = {
     "INIT: Initialised, not run",
     "RUN: In progress",
@@ -1407,9 +1411,14 @@ void _sm_BootMaster_slavestart (CO_Data* d, UNS32 idx)
     ds302_data.bootState = BootCompleted;
 }
 
+/*
+    This is called from the bootup handler
+    Might be a good idea to call from the boot process too (code reuse)
+*/
 void ds302_boot_slave (CO_Data* d, UNS8 slaveid)
 {
-    if (ds302_nl_node_in_list(d, slaveid)) {
+    // guard against double restarts. Start machine must be NOT be running
+    if (ds302_nl_node_in_list(d, slaveid) && !RUNNING_SM(ds302_data._bootSlave[slaveid])) {
         ds302_init_slaveSM (d, slaveid);
         // mark the machine as used
         DATA_SM (ds302_data._bootSlave[slaveid]).state = BootInitialised;
@@ -1465,12 +1474,19 @@ void ds302_init (CO_Data* d)
         DATA_SM (ds302_data._bootSlave[slaveid]).Index1020_2 = 0x0;
     }
     
+    // put a dummy callback for boot completed
+    // not used right now
     ds302_data.bootFinished = _ds302_boot_completed;
     // ready to proceed. Need to decide if we boot ON-DEMAND or we rely on boot messages
     // relying on boot messages seems to be a problem
     // we can WAIT for a boot message before starting the boot process for example
     // in order to ensure the slave is ready to process commands
     
+    // since 302 deals with booting, and error control, we need to take over those callbacks
+    // however, need to be careful since this brings quite a lot of functionality into 302
+    // But, since 302 is a "framework for CANopen Managers", this is within scope
+    d->post_SlaveBootup = _onSlaveBootCB;
+    d->post_emcy = _onEMCY;
 }
 
 void ds302_start (CO_Data* d)
@@ -1659,4 +1675,39 @@ int ds302_setHeartbeat (CO_Data* d, UNS8 nodeid, UNS16 heartbeat) {
     }
     
     return 1;
+}
+
+/*
+    This is called on detection of a bootup message
+    This can be either called during the initial boot stage, or it can be called outside of item
+    For example, a node resets
+*/
+void    _onSlaveBootCB (CO_Data* d, UNS8 nodeid) {
+    
+    // inform the user about the event
+    EPOS_WARN("received bootup message from CAN ID %02x\n", nodeid);
+    
+    // verify if slave is in Network List
+    if (ds302_nl_node_in_list(d, nodeid)) {        
+        // verify if slave boot allowed
+        if (ds302_bitcheck_32(d, 0x1F81, nodeid, DS302_NL_ONBOOT_START_SLAVE) == 1) {
+            // boot the node
+            ds302_boot_slave (d, nodeid);
+        }
+    }
+}
+
+/*
+    This is called on receipt of EMCY frames
+*/
+void    _onEMCY(CO_Data* d, UNS8 nodeid, UNS16 errCode, UNS8 errReg, const UNS8* errSpec) {
+    
+    // The 302 process calls for restart / stop of the nodes if a mandatory goes down
+    // for now we will not be implementing that
+    // most errors are recoverable via a fault reset in 402
+    // we probably want to carefully study the error code and error register
+    // to determine if a restart / stop is required
+    // For now just print the EMCY frame
+    
+    EPOS_WARN ("received EMCY from CAN ID %02x : errCode=%04x, errReg=%02x\n", nodeid, errCode, errReg);
 }
