@@ -36,6 +36,8 @@ author "Gabriel Curteanu";
 
 int slaveid[EPOS_MAX_DRIVES] = { 0, 0, 0, 0, 0 };
 RTAPI_MP_ARRAY_INT(slaveid,EPOS_MAX_DRIVES,"CAN slave IDs controlled by this master");
+int heartbeat[EPOS_MAX_DRIVES] = { 0, 0, 0, 0, 0 };
+RTAPI_MP_ARRAY_INT(heartbeat,EPOS_MAX_DRIVES,"The heartbeat values for each slave ID");
 int master_can_id = 0x7F;
 RTAPI_MP_INT(master_can_id,"The master's CAN ID");
 char *dcf = NULL;
@@ -246,7 +248,7 @@ EXTRA_SETUP()
     
     // add the defined slave nodeids
     for (i = 0; i < canmanager->slavecount; i++) {
-        rtapi_print ("Adding slave id %02x\n", canmanager->slave_id[i]);
+        rtapi_print ("CANmanager: Adding slave id %02x\n", canmanager->slave_id[i]);
         epos_add_slave (canmanager->slave_id[i]);
     }
 
@@ -275,6 +277,14 @@ EXTRA_SETUP()
     ds302_start (&EPOScontrol_Data);
     LeaveMutex();
 
+    // add the defined slave node IDs to the heartbeat consumer
+    for (i = 0; i < canmanager->slavecount; i++) {
+        if (heartbeat[i] > 0) {
+            rtapi_print ("CANmanager: Starting HB for slave id %02x with a %d ms\n", canmanager->slave_id[i], heartbeat[i]);
+            ds302_setHeartbeat (&EPOScontrol_Data, canmanager->slave_id[i], heartbeat[i]);
+        }
+    }
+        
     rtapi_print("CANmanager: finished initialization.\n");
 
     return 0;
