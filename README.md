@@ -230,7 +230,7 @@ More to come...
 CiA 402 mandates a specific PDO mapping, but that's sub-optimal for most cases.
 Cia 402 states:
 PDO nr | RxPDO | TxPDO
------------------------
+-------|-------|--------
 0 | ControlWord | StatusWord
 1 | CW + ModesOfOperation | SW + ModesOfOperation Display
 2 | CW + Target Position | SW + Position Actual
@@ -238,7 +238,7 @@ PDO nr | RxPDO | TxPDO
 
 In order to minimize the PDO requirements the following seem to work just fine:
 PDO nr | RxPDO(slave) | TxPDO(slave)
------------------------
+-------|-------|--------
 0 | ControlWord(2) + ModesOfOperation(1) + DigitalOut(2) | StatusWord(2) + ModesOfOperation Display(1) + DigitalIn(2)
 1 | CW(2) + Target Position(4) | Position Actual(4) + Velocity Actual(4)
 2 | CW(2) + Target Velocity(4) | not used
