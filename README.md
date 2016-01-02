@@ -229,6 +229,7 @@ For updating PDOs, the following rules must be observed (per CiA 301)
 More to come...
 CiA 402 mandates a specific PDO mapping, but that's sub-optimal for most cases.
 Cia 402 states:
+
 PDO nr | RxPDO | TxPDO
 -------|-------|--------
 0 | ControlWord | StatusWord
@@ -237,6 +238,7 @@ PDO nr | RxPDO | TxPDO
 3 | CW + Target Velocity | SW + Velocity Actual
 
 In order to minimize the PDO requirements the following seem to work just fine:
+
 PDO nr | RxPDO(slave) | TxPDO(slave)
 -------|-------|--------
 0 | ControlWord(2) + ModesOfOperation(1) + DigitalOut(2) | StatusWord(2) + ModesOfOperation Display(1) + DigitalIn(2)
