@@ -30,11 +30,12 @@ author "Gabriel Curteanu";
 #include "EPOScontrol.h"
 #include "epos.h"
 #include "ds302.h"
+#include "eposconfig.h"
 
 #define NMT_MASTER_NODE     0x7F
 
-int slaveid[MAX_EPOS_DRIVES] = { 0, 0, 0, 0, 0 };
-RTAPI_MP_ARRAY_INT(slaveid,MAX_EPOS_DRIVES,"CAN slave IDs controlled by this master");
+int slaveid[EPOS_MAX_DRIVES] = { 0, 0, 0, 0, 0 };
+RTAPI_MP_ARRAY_INT(slaveid,EPOS_MAX_DRIVES,"CAN slave IDs controlled by this master");
 int master_can_id = 0x7F;
 RTAPI_MP_INT(master_can_id,"The master's CAN ID");
 char *dcf = NULL;
@@ -42,11 +43,11 @@ RTAPI_MP_STRING(dcf, "The DCF initialisation data");
 
 typedef struct {
     hal_u32_t   slavecount;
-    hal_u32_t   slave_id[MAX_EPOS_DRIVES];
-    hal_float_t position_scale[MAX_EPOS_DRIVES];
-    hal_float_t *position_command[MAX_EPOS_DRIVES];
-    hal_float_t *position_feedback[MAX_EPOS_DRIVES];
-    hal_s32_t   *position_counts[MAX_EPOS_DRIVES];
+    hal_u32_t   slave_id[EPOS_MAX_DRIVES];
+    hal_float_t position_scale[EPOS_MAX_DRIVES];
+    hal_float_t *position_command[EPOS_MAX_DRIVES];
+    hal_float_t *position_feedback[EPOS_MAX_DRIVES];
+    hal_s32_t   *position_counts[EPOS_MAX_DRIVES];
 } canmanager_t;
 
 static canmanager_t *canmanager;
@@ -166,7 +167,7 @@ EXTRA_SETUP()
 
     // load the params
     int i;
-    for (i = 0; i < MAX_EPOS_DRIVES; i++)
+    for (i = 0; i < EPOS_MAX_DRIVES; i++)
         if (slaveid[i] != 0) {
             canmanager->slave_id[canmanager->slavecount++] = slaveid[i];
         }
@@ -323,6 +324,9 @@ FUNCTION(update)
     if (boot_done == 0 && ds302_status(&EPOScontrol_Data) == BootCompleted) {
             boot_done = 1;
 
+            // set the boot complete param
+            boot_complete = 1;
+
             rtapi_print ("CANmanager: Initialising drives\n");
             EnterMutex();
             
@@ -348,7 +352,10 @@ FUNCTION(update)
             sendPDOevent(&EPOScontrol_Data);
 
             LeaveMutex();
-    }            
+    } else if (ds302_status(&EPOScontrol_Data) != BootCompleted) {
+        // boot is still in progress / not done
+        // let's update the boot status for each system
+    }
 
     for (i = 0; i < canmanager->slavecount ; i++) {
 
