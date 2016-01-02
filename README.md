@@ -122,19 +122,45 @@ outside the normal CiA 302 boot process (prior to CiA 302)
 
 # Machinekit/LinuxCNC interface
 
-- pin <driveno>.enable
+## Module options
+
+- master_can_id='<CAN ID>'
+Sets the CAN ID of the master node (the component). It is by default 0x7F
+
+- slaveid=<slave1>,<slave2>,...,slave<EPOS_MAX_DRIVES>
+Defines the slaves that are being managed. Those are added as MANDATORY slaves in the CiA 302 process, module will NOT start if one of the slaves is not responding or has an error.
+
+- heartbeat=<slave1>,<slave2>,...,slave<EPOS_MAX_DRIVES>
+Defines the heartbeat for each slave (as a CONSUMER). The producer side (on the drive itself) needs to be either configured manually or via CDCF and MUST match the value set in order to prevent 
+drives being detected as disconnected. Set the hearbeat time for the slave at least as <hb producer time>*1.5 for small values, take into account some amount of jitter will be present
+
+_*NOTE: if a heartbeat is set it WILL be used during the boot process. Boot will stop waiting to receive a heartbeat from the slave. A zero values disables heartbeat checking*_
+
+- dcf=<filename>
+The DCF file name containing the data for configuring the slaves at boot-up time. THIS IS MANDATORY (for now, due to code not being 100% right). 
+Each defined slaveid must have at least one entry in the file, for example setting the heartbeat producer time (ex for a 50ms heartbeat: 0x1017 0x00 2 0x0032)
+
+## Pins / parameters
+
+- param slave-count
+The number of slaves that are being managed
+
+- param '<driveno>'.slave-id
+The CAN ID of the slave for that particular drive
+
+- pin '<driveno>'.enable
 The pin enables / disables the drive.
 When enable goes high, drive seeks to get to the enabled state, clearing all the drive errors in the process
 When enable goes low, drive is disabled (does a full stop via quickstop automatically?)
 
-- pin <driveno>.enabled
+- pin '<driveno>'.enabled
 The drive is enabled (?) Not implemented. Maybe a "ready" signal to indicate presence? 
 
-- pin <driveno>.faulted
+- pin '<driveno>'.faulted
 At least one of the drives is faulted. This happens at heartbeat loss OR EMCY frame.
 Only way to clear it is via enable to high transition
 
-- <driveno>.control_type
+- pin '<driveno>'.control_type
 When 0 drive is in position mode (position command into effect)
 When 1 drive is in velocity mode (velocity command into effect)
 
@@ -143,22 +169,22 @@ When 1 drive is in velocity mode (velocity command into effect)
 Macimal velocity / acceleration values
 These are NOT implemented yet (no support for SDOs after startup)
 
-- <driveno>.counts
+- pin '<driveno>'.counts
 raw encoder / position from the drive
 
-- <driveno>.position_scale
+- param '<driveno>'.position_scale
 scale for positioning. position = counts / position-scale
 
-- <driveno>.position_cmd
+- pin '<driveno>'.position_cmd
 position command (for position control)
 
-- <driveno>.velocity_cmd
+- pin '<driveno>'.velocity_cmd
 velocity command (for velocity control) (not implemented yet)
 
-- <driveno>.position_fb
+- pin '<driveno>'.position_fb
 position feedback
 
-- <driveno>.velocity_fb
+- pin '<driveno>'.velocity_fb
 velocity feedback (not implemented yet)
 
 # Internal CANopen objects
