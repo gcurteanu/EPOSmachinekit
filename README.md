@@ -46,8 +46,8 @@ CANopen EPOS controller for Machinekit
 - No need for the Peak Linux driver. It is not used / useful from what can be seen
 - The RT-CAN in the kernel seems stable, but can not cope with Linux interrupt sharing when used in the RT model. Peak card MUST NOT share it's IRQ with other devices... Or else kernel panics.
 
-As far as positioning controller, Maxon EPOS 70/10. Looks like a very standard implementation of DS 402 is used, so if it works for this, it will work for others as well
-testing the CAN with a 25mtr CAN cable with 120ohm termination at both ends, point to point
+As far as positioning controller, Maxon EPOS 70/10. Looks like a very standard implementation of DS 402 is used, so if it works for this, it will work for others as well.  
+Testing the CAN with a 25mtr CAN cable with 120ohm termination at both ends, point to point
 
 ##Items needing attention:
 - serious bug in CanFestival timer scheduling. Due to a TIMEVAL to UNS32 conversion, in case of negative values, leads to the timers to misfire BADLY. Redefined the overrun as timeval, and removed the conversion.
@@ -59,7 +59,7 @@ In file src/timer.c, start of TimeDispatch function, change as follows:
 ```
 
 - there is no IOCT for loopback in the Xenomai API as shipped with the Debian/MK packages.
-  This is easy to fix, the code block in the drivers/can_socket/can_socket.c
+  This is easy to fix, comment the code block in the drivers/can_socket/can_socket.c
 ```C
   {
     int loopback = 1;
@@ -72,10 +72,11 @@ In file src/timer.c, start of TimeDispatch function, change as follows:
   }
 ```
 In fact, using rtcanconfig this can be set on the card itself (ex: rtcanconfig rtcan0 -c loopback -b 1000000 start)
-This is ONLY needed in case of using SYNC telegrams, since those are generated over the wire and otherwise are NOT received/processed by the local node
-SYNC is NOT USED at this moment (planned, but on a 1ms cycle it will stop a random amount of time. Not sure why yet, planned feature in order to support SYNC based PDOs)
+This is ONLY needed in case of using SYNC telegrams, since those are generated over the wire and otherwise are NOT received/processed by the local node  
+SYNC is NOT USED at this moment (planned, but on a 1ms cycle it will stop a random amount of time. Not sure why yet, planned feature in order to support SYNC based PDOs)  
+One other option and possibly far better (since being a master requires sending NMT resets/stops/start to other nodes EXCEPT the local node) is to simply process the PDO sending in the SYNC callback (that would be both faster and more correct) and forego the loopback problem for a master.
 
-# DCF file format
+## DCF file format
 
 The format for initializing slaves is the DCF format, but not sure if a full implementation is required.
 A full DCF parser is quite a lot of work and will not add much compared to binary ConciseDCF streams.
@@ -83,7 +84,8 @@ A full DCF parser is quite a lot of work and will not add much compared to binar
 Standard DCF format is a bit complex for our needs, and also requires some application logic to apply in case of the PDO mappings
 (per 301 : disable PDO, set mapping count to zero, load mapping, configure PDO, enable mapping and PDO)
 
-"Subindex 0 determines the valid number of objects that have been mapped. For changing the PDO
+```
+Subindex 0 determines the valid number of objects that have been mapped. For changing the PDO
 mapping first the PDO has to be deleted, the sub-index 0 must be set to 0 (mapping is deactivated).
 Then the objects can be remapped. When a new object is mapped by wrinting a subindex between 1
 and 64, the device may check whether the object specified by index / sub-index exists. If the object
@@ -91,9 +93,10 @@ does not exist or the object cannot be mapped, the SDO transfer must be aborted 
 Transfer Service with one of the abort codes 0602 0000h or 0604 0041h.
 After all objects are mapped subindex 0 is set to the valid number of mapped objects. Finally the PDO
 will be created by writing to its communication parameter COB-ID. When subindex 0 is set to a value
->0 the device may validate the new PDO mapping before transmitting the response of the SDO
+greater than 0 the device may validate the new PDO mapping before transmitting the response of the SDO
 service. If an error is detected the device has to transmit the Abort SDO Transfer Service with one of
-the abort codes 0602 0000h, 0604 0041h or 0604 0042h."
+the abort codes 0602 0000h, 0604 0041h or 0604 0042h.
+```
 
 Our format should directly describe the steps and should be a 1:1 mapping to SDO actions. One problem to cope with is describing the data size of the objects.
 There is a ConciseDCF implementation in CanFestival but that is rather rudimentary and not CiA 302 compliant.
@@ -118,9 +121,22 @@ Example:
 Updated ConciseDCF code was implemented and there's also a capability to configure the master via ConciseDCF 
 outside the normal CiA 302 boot process (prior to CiA 302)
 
+### ConciseDCF internal storage
+The object ID for ConciseDCF is 0x1F22, and each node-ID must have an entry at the corresponding node-ID subindex (eq: node 0x17 has the ConciseDCF data in 0x1F22 0x17)
+Entries are of the DOMAIN data type. Those consist of an UNS8 array, statically allocated to a large enough size in case data is present (the static allocation for simplicity, might change to dynamically allocated data possibly)
 
+The format of the object entry is:
 
-# Machinekit/LinuxCNC interface
+Index/Count | Contents | Comments
+------|----------|---------
+4(UNS32) | Total number of entries | The total number of entries in the DCF
+2(UNS16) | Object index | 
+1(UNS8) | Object sub-index | 
+4(UNS32) | Data size in BYTES | Not in bits. A UNS32 will have a size of 4 (not 32)
+N | Data | Actual data for the Index / Sub-Idx
+...| ... | repeat the index/sub-index/size/data for the remaining items
+
+## Machinekit/LinuxCNC interface
 
 ## Module options
 
