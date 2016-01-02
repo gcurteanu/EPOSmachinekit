@@ -4,11 +4,7 @@
 #include <time.h>
 #include "ds302.h"
 
-#define DS302_DEBUG(...)
-//#define DS302_DEBUG(...) eprintf(__VA_ARGS__)
-
-// max time in us for a boot
-#define NODE_BOOT_TIME 10*1000*1000
+#define DS302_DEBUG(...)    MSG_DBG(__VA_ARGS__)
 
 // gets the clock in microsecs
 uint64_t rtuClock()
@@ -35,8 +31,6 @@ INIT_SM_TYPE(BOOTMASTER,_sm_BootMaster_States,TimerCallback_t,
     _sm_BootMaster_operwait,
     _sm_BootMaster_slavestart);
 
-//DECLARE_SM(BOOTMASTER, _masterBoot);
-
 INIT_SM_TYPE(BOOTSLAVE,_sm_BootSlave_States,SDOCallback_t,
     _sm_BootSlave_initial,
     _sm_BootSlave_getDeviceType,
@@ -58,63 +52,9 @@ INIT_SM_TYPE(BOOTSLAVE,_sm_BootSlave_States,SDOCallback_t,
 // declare the master ds302_data structure
 ds302_t     ds302_data;
 
-// 0x1F80 bits
-#define DS302_DEVICE_NMT_MASTER         0x01    // is the device the NMT master
-#define DS302_DEVICE_START_ALL_SLAVES   0x02    // perform a broadcast to start all slaves
-#define DS302_DEVICE_MANUAL_OPERATIONAL 0x04    // enter operational state manually
-#define DS302_DEVICE_MANUAL_START_SLAVE 0x08    // application will start the slaves
-#define DS302_DEVICE_ONERROR_MANDATORY  0x10    // reset ALL slaves if a mandatory has an error
-
-// 0x1F89 - maximum time to wait for all mandatory slaves
-
-// 0x1F81 network list
-#define DS302_NL_IS_SLAVE               0x01
-#define DS302_NL_ONBOOT_START_ERROR_CTL 0x02
-#define DS302_NL_ONBOOT_START_SLAVE     0x04
-#define DS302_NL_MANDATORY              0x08
-#define DS302_NL_DONOT_RESET            0x10
-#define DS302_NL_SW_VERIFY              0x20
-#define DS302_NL_SW_UPDATE              0x40
-// the second byte is the retry factor
-#define DS302_NL_RETRY_FACTOR(a)        (((a) >> 8) & 0xFF)
-// the 3 and 4 bytes are the guard time
-#define DS302_NL_GUARD_TIME(a)          (((a) >> 16) & 0xFFFF)
-
-// holds the boot signals
-// ds302_boot_state_t ds302_boot_data[NMT_MAX_NODE_ID];
-
-// move to a pointer based state machine, using functions that are also callback capable for SDOs
-// type for functions is SDOCallback_t
-
-/*
- BootSlave state machine
-*/
-
-/* Commented, moving to the ds302_data structure
-SDOCallback_t const _sm_BootSlave_StateTable[ SM_BOOTSLAVE_NUM_STATES ] = {
-    _sm_BootSlave_initial,
-    _sm_BootSlave_getDeviceType,
-    _sm_BootSlave_getIdentification_1,
-    _sm_BootSlave_getIdentification_2,
-    _sm_BootSlave_getIdentification_3,
-    _sm_BootSlave_getIdentification_4,
-    _sm_BootSlave_decideBCPath,
-    _sm_BootSlave_doConfigurationVersionChecks,
-    _sm_BootSlave_verifyConfigurationVersion_1,
-    _sm_BootSlave_verifyConfigurationVersion_2,
-    _sm_BootSlave_downloadConfiguration,
-    _sm_BootSlave_startErrorControlService,
-    _sm_BootSlave_waitHeartbeat,
-    _sm_BootSlave_startNodeGuard,
-    _sm_BootSlave_errorControlStarted,
-    _sm_BootSlave_startSlave,
-};
-
-// holds the state machines for each slave boot process
-_sm_BootSlave ds302_slaveBootSM[NMT_MAX_NODE_ID];
-*/
-
 const char* _sm_BootSlave_CodeToText[] = {
+    "INIT: Initialised, not run",
+    "RUN: In progress",
     "OK: finished OK",
     "CAN: generic CAN error",
     "A: node no longer in network list",         
@@ -1523,9 +1463,30 @@ void ds302_start (CO_Data* d)
     START_SM(ds302_data._masterBoot, d, NMT_MAX_NODE_ID);
 }
 
+/*
+    Returns the overall status
+*/
 ds302_boot_state_t  ds302_status (CO_Data* d)
 {
     return ds302_data.bootState;
+}
+
+/*
+    Returns a node boot status
+*/
+ds302_boot_state_t  ds302_node_status (CO_Data* d, UNS8 nodeid)
+{
+    return DATA_SM (ds302_data._bootSlave[slaveid]).state;
+}
+
+_sm_BootSlave_Codes ds302_node_result (CO_Data* d, UNS8 nodeid)
+{
+    return DATA_SM (ds302_data._bootSlave[slaveid]).result;
+}
+
+UNS32   ds302_node_error (CO_Data* d, UNS8 nodeid)
+{
+    return DATA_SM (ds302_data._bootSlave[slaveid]).errorCode;
 }
 
 /*

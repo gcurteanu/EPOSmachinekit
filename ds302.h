@@ -1,15 +1,29 @@
+#ifndef __EPOS_DS302_H__
+#define __EPOS_DS302_H__
 
+#include "config.h"
 
+// 0x1F80 bits
+#define DS302_DEVICE_NMT_MASTER         0x01    // is the device the NMT master
+#define DS302_DEVICE_START_ALL_SLAVES   0x02    // perform a broadcast to start all slaves
+#define DS302_DEVICE_MANUAL_OPERATIONAL 0x04    // enter operational state manually
+#define DS302_DEVICE_MANUAL_START_SLAVE 0x08    // application will start the slaves
+#define DS302_DEVICE_ONERROR_MANDATORY  0x10    // reset ALL slaves if a mandatory has an error
 
+// 0x1F89 - maximum time to wait for all mandatory slaves
 
-/*
-    Debug defines
-*/
-#ifdef USE_XENO
-#define eprintf(...) rt_printf (__VA_ARGS__)
-#else
-#define eprintf(...) rt_printf (__VA_ARGS__)
-#endif
+// 0x1F81 network list
+#define DS302_NL_IS_SLAVE               0x01
+#define DS302_NL_ONBOOT_START_ERROR_CTL 0x02
+#define DS302_NL_ONBOOT_START_SLAVE     0x04
+#define DS302_NL_MANDATORY              0x08
+#define DS302_NL_DONOT_RESET            0x10
+#define DS302_NL_SW_VERIFY              0x20
+#define DS302_NL_SW_UPDATE              0x40
+// the second byte is the retry factor
+#define DS302_NL_RETRY_FACTOR(a)        (((a) >> 8) & 0xFF)
+// the 3 and 4 bytes are the guard time
+#define DS302_NL_GUARD_TIME(a)          (((a) >> 16) & 0xFFFF)
 
 /*
     BootSlave state machine
@@ -35,6 +49,7 @@ typedef enum {
     SM_BOOTSLAVE_NUM_STATES,
 } _sm_BootSlave_States;
 
+/*
 void ds302_preOperational_preBoot (CO_Data*);
 void ds302_preOperational_postBoot (CO_Data*);
 void ds302_slaveBootprocess (CO_Data*);
@@ -56,96 +71,41 @@ void _sm_BootSlave_waitHeartbeat(CO_Data*, UNS8);
 void _sm_BootSlave_startNodeGuard(CO_Data*, UNS8);
 void _sm_BootSlave_errorControlStarted(CO_Data*, UNS8);  // here we need to check if we went D/noconfig and exit
 void _sm_BootSlave_startSlave(CO_Data*, UNS8);
+*/
 
 typedef enum {
-    SM_Initialised = -2,    // SM initialised but not run
-    SM_InProgress = -1,     // executed OK but waiting for IO
-    SM_OK = 0,              // finished OK
-    SM_Error = 1,           // finished with CAN errors
-    SM_ErrA = 2,            // workflow codes
-    SM_ErrB = 3,            
-    SM_ErrC = 4,            
-    SM_ErrD = 5,    
-    SM_ErrE = 6,            
-    SM_ErrF = 7,            
-    SM_ErrG = 8,            
-    SM_ErrH = 9,
-    SM_ErrI = 10,
-    SM_ErrJ = 11,
-    SM_ErrK = 12,
-    SM_ErrL = 13,
-    SM_ErrM = 14,
-    SM_ErrN = 15,
-    SM_ErrO = 16,
+    SM_Initialised,    // SM initialised but not run
+    SM_InProgress,     // executed OK but waiting for IO
+    SM_OK,              // finished OK
+    SM_Error,           // finished with CAN errors
+    SM_ErrA,            // workflow codes
+    SM_ErrB,            
+    SM_ErrC,            
+    SM_ErrD,    
+    SM_ErrE,            
+    SM_ErrF,            
+    SM_ErrG,            
+    SM_ErrH,
+    SM_ErrI,
+    SM_ErrJ,
+    SM_ErrK,
+    SM_ErrL,
+    SM_ErrM,
+    SM_ErrN,
+    SM_ErrO,
 } _sm_BootSlave_Codes;
 
-
-typedef struct {
-    // machine codes, current machine state
-    _sm_BootSlave_Codes     machine_state;
-    // error code from the CAN routines
-    UNS32                   error_code;
-    // curent state of the state machine. 0 is the first (entry) default state
-    _sm_BootSlave_States    current_state;
-    // current iteration of the step. 0 is the first iteration
-    int                     step_iter;
-
-    // machine data
-    char    ViaDPath;
-
-    UNS32   Index1000;
-
-    UNS32   Index1018_1;
-    UNS32   Index1018_2;
-    UNS32   Index1018_3;
-    UNS32   Index1018_4;
-
-    UNS32   Index1020_1;
-    UNS32   Index1020_2;
-
-    uint64_t    start_time;
-} _sm_BootSlave;
-
-// state machine definitions
-
-extern _sm_BootSlave ds302_slaveBootSM[NMT_MAX_NODE_ID];
-
-#define SM_DATA(nodeID,varname) ds302_slaveBootSM[(nodeID)].varname
-
-#define SM_SWITCH_STATE(new_state,d,nodeID) {\
-        ds302_slaveBootSM[(nodeID)].current_state = (new_state); \
-        ds302_slaveBootSM[(nodeID)].step_iter = 0; \
-        _sm_BootSlave_StateTable[ds302_slaveBootSM[(nodeID)].current_state] ((d),(nodeID)); }
-
-#define SM_RUN_MACHINE(d,nodeID) {\
-    _sm_BootSlave_StateTable[ds302_slaveBootSM[(nodeID)].current_state] ((d),(nodeID)); }
-
-
-#define SM_IS_FINISHED(nodeID) (ds302_slaveBootSM[(nodeID)].machine_state != SM_InProgress)
-
-#define SM_INIT(nodeID) {\
-        ds302_slaveBootSM[(nodeID)].current_state = SM_BOOTSLAVE_INITIAL; \
-        ds302_slaveBootSM[(nodeID)].machine_state = SM_InProgress; \
-        ds302_slaveBootSM[(nodeID)].error_code = 0; \
-        ds302_slaveBootSM[(nodeID)].step_iter = 0; \
-        ds302_slaveBootSM[(nodeID)].ViaDPath = 0; }
-
-#define SM_INITIAL(nodeID) (ds302_slaveBootSM[(nodeID)].step_iter++ == 0)
-
-#define SM_ERROR(nodeID,code) ds302_slaveBootSM[(nodeID)].machine_state = (code) 
-
-/*
-    Extern data structure definitions
-*/
 // code to text table
 extern const char* _sm_BootSlave_CodeToText[];
 #define SM_ERR_MSG(code) _sm_BootSlave_CodeToText[(code)]
 
-
 /*
-  Macro DEFINES a state machine structure
-  The machine callback table is UNIQUE (not per instance). It needs to be built once
-*/
+ * State machine definitions
+ *
+ *
+ *
+ *
+ */
 
 typedef enum {
     MachInit = 0,
@@ -153,6 +113,10 @@ typedef enum {
     MachStop = 2,
 } _mach_state_t;
 
+/*
+  Macros DEFINES a state machine structure
+  The machine callback table is UNIQUE (not per instance). It needs to be built once
+*/
 #define DECLARE_SM_TYPE(SM_NAME,SM_STATE_ENUM,SM_FUNCTION_TYPE,SM_CUSTOMDATA_TYPE)	\
 typedef struct {\
     _mach_state_t                           machine_op;\
@@ -179,28 +143,32 @@ extern SM_FUNCTION_TYPE SM_NAME##_machine_callbacks[];
     INST_NAME.step_iter = 0;\
     INST_NAME.machine_callbacks = SM_NAME##_machine_callbacks;
 
-/*
-  Macro RUNS the state machine
-*/
+/* starts a initialised state machine */
 #define START_SM(INST_NAME,...) \
     if (INST_NAME.machine_op != MachRun) { INST_NAME.machine_op = MachRun; INST_NAME.machine_callbacks[INST_NAME.machine_state] (__VA_ARGS__); }
 
+/* runs a previously started state machine */
 #define RUN_SM(INST_NAME,...) \
     if (INST_NAME.machine_op == MachRun) { INST_NAME.machine_callbacks[INST_NAME.machine_state] (__VA_ARGS__); }
 
+/* switches the state machine to a new state */
 #define SWITCH_SM(INST_NAME,NEW_STATE,...) \
     if (INST_NAME.machine_op == MachRun) {\
         INST_NAME.machine_state = NEW_STATE; \
         INST_NAME.step_iter = 0; \
         INST_NAME.machine_callbacks[INST_NAME.machine_state] (__VA_ARGS__); }
 
+/* stops the state machine */
 #define STOP_SM(INST_NAME)      INST_NAME.machine_op = MachStop
 
+/* get the state machine's current state */
 #define RUNNING_SM(INST_NAME)   (INST_NAME.machine_op == MachRun)
 #define STOPPED_SM(INST_NAME)   (INST_NAME.machine_op == MachStop)
 
+/* To be used for run-once-at-start code */
 #define INITIAL_SM(INST_NAME)   (INST_NAME.step_iter++ == 0)
 
+/* Macro to access the state machine's data */
 #define DATA_SM(INST_NAME)      INST_NAME.machine_data
 
 /*
@@ -302,16 +270,20 @@ uint64_t rtuClock();
 
 /* Initialise the DS-302 boot */
 void    ds302_init (CO_Data*);
-/* starts the DS-302 boot */
+/* starts the DS-302 boot sequence */
 void    ds302_start (CO_Data *);
-/* get the state of the boot */
-ds302_boot_state_t  ds302_status (CO_Data*);
 /* init the boot for a slave */
-void ds302_init_slaveSM (CO_Data*, UNS8);
+void    ds302_init_slaveSM (CO_Data*, UNS8);
 /* boot a slave */
-void ds302_boot_slave (CO_Data*, UNS8);
-/* Gets the DS-302 boot status */
-ds302_boot_state_t   ds302_status (CO_Data *);
+void    ds302_boot_slave (CO_Data*, UNS8);
+/* Gets the overall DS-302 boot status */
+ds302_boot_state_t  ds302_status (CO_Data *);
+/* Gets a slave's boot status */
+ds302_boot_state_t  ds302_node_status (CO_Data*, UNS8);
+/* Gets a slave's boot result */
+_sm_BootSlave_Codes ds302_node_result (CO_Data*, UNS8);
+/* Gets a slave's CAN error */
+UNS32   ds302_node_error (CO_Data*, UNS8);
 
 
 /* DCF data defines/routines */
@@ -320,3 +292,5 @@ int     ds302_get_next_dcf (UNS8 *data, UNS32 *cursor, UNS16 *idx, UNS8 *subidx,
 int     ds302_load_dcf_local (CO_Data*);
 /* set the HB for a node */
 int     ds302_setHeartbeat (CO_Data*, UNS8 nodeid, UNS16 heartbeat);
+
+#endif

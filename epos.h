@@ -5,13 +5,8 @@
 #define __EPOS_H__
 
 #include <data.h>
-
 #include "dcf.h"
-
-#define SET_BIT(val, bitIndex) val |= (1 << bitIndex)
-#define CLEAR_BIT(val, bitIndex) val &= ~(1 << bitIndex)
-#define TOGGLE_BIT(val, bitIndex) val ^= (1 << bitIndex)
-#define BIT_IS_SET(val, bitIndex) (val & (1 << bitIndex))
+#include "config.h"
 
 typedef struct {
     UNS16           error_code;
@@ -23,9 +18,7 @@ extern epos_error_t epos_error_table[];
 
 const char * epos_error_text (UNS16 errCode);
 
-#define MAX_EPOS_DRIVES     5
-#define EPOS_MAX_ERRORS     32
-
+/* the possible CiA 402 states (updated with vendor specific items for Maxon EPOS) */
 typedef enum {
     EPOS_START      = 0x0000,
     EPOS_NOTREADY   = 0x0100,
@@ -41,6 +34,12 @@ typedef enum {
     EPOS_FAULT      = 0x0108,   
 } EPOS_DS402_state_t;
 
+/*
+Profile Position Mode state machine states
+New set point: ___|````````|____________ (ControlWord)
+Set point ACK: ________|``````````|_____ (StatusWord)
+State        : RDY|SENT|ACK|RUN...|RDY..
+*/
 typedef enum {
     PPM_Ready = 0x00,
     PPM_Sent = 0x10,
@@ -48,6 +47,7 @@ typedef enum {
     PPM_Running = 0x01,
 } PPM_State_t;
 
+/* Maxon EPOS drive modes */
 typedef enum {
     EPOS_MODE_HMM = 6,  // homing
     EPOS_MODE_PVM = 3,  // profile velocity
@@ -91,19 +91,19 @@ typedef struct {
     CO_Data*    d;
     
     // the list of the EPOS slaves we control
-    UNS8        epos_slaves[MAX_EPOS_DRIVES];
+    UNS8        epos_slaves[EPOS_MAX_DRIVES];
     UNS8        epos_slave_count;
     
     // holds the DCF data for initializing the nodes
     dcfset_t    dcf_data;
     
     // holds the drive errors signalled via EMCY
-    UNS32       slave_err[MAX_EPOS_DRIVES][EPOS_MAX_ERRORS+1];
+    UNS32       slave_err[EPOS_MAX_DRIVES][EPOS_MAX_ERRORS+1];
     
     // EPOS_State is the slave state. Used internally by the drive routines
-    UNS16       EPOS_State[MAX_EPOS_DRIVES];
+    UNS16       EPOS_State[EPOS_MAX_DRIVES];
     
-    PPM_State_t EPOS_PPMState[MAX_EPOS_DRIVES];
+    PPM_State_t EPOS_PPMState[EPOS_MAX_DRIVES];
     
     // enabled or disabled
     char        drive_enabled;
@@ -114,51 +114,51 @@ typedef struct {
 
         
     // CNC interface
-    char        enable[MAX_EPOS_DRIVES];         // true - drive enabled, false - drive disabled
-    int         control_type[MAX_EPOS_DRIVES];   // 0 - position control, 1 - velocity control
-    int         maxvel[MAX_EPOS_DRIVES];	     // maximal drive velocity
-    int         maxaccel[MAX_EPOS_DRIVES];       // maximal drive acceleration
+    char        enable[EPOS_MAX_DRIVES];         // true - drive enabled, false - drive disabled
+    int         control_type[EPOS_MAX_DRIVES];   // 0 - position control, 1 - velocity control
+    int         maxvel[EPOS_MAX_DRIVES];	     // maximal drive velocity
+    int         maxaccel[EPOS_MAX_DRIVES];       // maximal drive acceleration
 
-    int         counts[MAX_EPOS_DRIVES];         // raw encoder / position from the drive
-    float       position_scale[MAX_EPOS_DRIVES]; // scale for positioning. position = counts / position-scale
+    int         counts[EPOS_MAX_DRIVES];         // raw encoder / position from the drive
+    float       position_scale[EPOS_MAX_DRIVES]; // scale for positioning. position = counts / position-scale
 
-    float       position_cmd[MAX_EPOS_DRIVES];   // position command (for position control)
-    float       velocity_cmd[MAX_EPOS_DRIVES];   // velocity command (for velocity control)
+    float       position_cmd[EPOS_MAX_DRIVES];   // position command (for position control)
+    float       velocity_cmd[EPOS_MAX_DRIVES];   // velocity command (for velocity control)
 
-    float       position_fb[MAX_EPOS_DRIVES];    // position feedback
-    float       velocity_fb[MAX_EPOS_DRIVES];    // velocity feedback
+    float       position_fb[EPOS_MAX_DRIVES];    // position feedback
+    float       velocity_fb[EPOS_MAX_DRIVES];    // velocity feedback
 
-    char        fault[MAX_EPOS_DRIVES];          // drive is faulted
+    char        fault[EPOS_MAX_DRIVES];          // drive is faulted
 
     // extra stuff
 
-    char        home[MAX_EPOS_DRIVES];           // set to high to initialise homing
-    char        homing_done[MAX_EPOS_DRIVES];    // set to high when drive is homed
+    char        home[EPOS_MAX_DRIVES];           // set to high to initialise homing
+    char        homing_done[EPOS_MAX_DRIVES];    // set to high when drive is homed
 
-    char        lock[MAX_EPOS_DRIVES];           // engage the lock brake
-    char        is_locked[MAX_EPOS_DRIVES];      // lock brake is engaged and axis is confirmed locked
+    char        lock[EPOS_MAX_DRIVES];           // engage the lock brake
+    char        is_locked[EPOS_MAX_DRIVES];      // lock brake is engaged and axis is confirmed locked
 
     // GPIO pins
-    char        home_sw_pin[MAX_EPOS_DRIVES];    // home switch pin
-    char        enable_pin[MAX_EPOS_DRIVES];     // enable pin
-    char        in_a_pin[MAX_EPOS_DRIVES];       // IN A
-    char        in_b_pin[MAX_EPOS_DRIVES];       // IN B
-    char        in_c_pin[MAX_EPOS_DRIVES];       // IN C
-    char        in_d_pin[MAX_EPOS_DRIVES];       // IN D
-    char        in_e_pin[MAX_EPOS_DRIVES];       // IN E
-    char        in_f_pin[MAX_EPOS_DRIVES];       // IN F
+    char        home_sw_pin[EPOS_MAX_DRIVES];    // home switch pin
+    char        enable_pin[EPOS_MAX_DRIVES];     // enable pin
+    char        in_a_pin[EPOS_MAX_DRIVES];       // IN A
+    char        in_b_pin[EPOS_MAX_DRIVES];       // IN B
+    char        in_c_pin[EPOS_MAX_DRIVES];       // IN C
+    char        in_d_pin[EPOS_MAX_DRIVES];       // IN D
+    char        in_e_pin[EPOS_MAX_DRIVES];       // IN E
+    char        in_f_pin[EPOS_MAX_DRIVES];       // IN F
 
-    float       in_ana1[MAX_EPOS_DRIVES];        // Analog 1 in
-    float       in_ana2[MAX_EPOS_DRIVES];        // Analog 2 in
+    float       in_ana1[EPOS_MAX_DRIVES];        // Analog 1 in
+    float       in_ana2[EPOS_MAX_DRIVES];        // Analog 2 in
 
-    char        out_a_pin[MAX_EPOS_DRIVES];      // OUT A
-    char        out_b_pin[MAX_EPOS_DRIVES];      // OUT B
-    char        out_c_pin[MAX_EPOS_DRIVES];      // OUT C
-    char        out_d_pin[MAX_EPOS_DRIVES];      // OUT D
+    char        out_a_pin[EPOS_MAX_DRIVES];      // OUT A
+    char        out_b_pin[EPOS_MAX_DRIVES];      // OUT B
+    char        out_c_pin[EPOS_MAX_DRIVES];      // OUT C
+    char        out_d_pin[EPOS_MAX_DRIVES];      // OUT D
 
     
     // SDO transfer data, per node
-    SDO_transfer_t  sdos[MAX_EPOS_DRIVES];
+    SDO_transfer_t  sdos[EPOS_MAX_DRIVES];
 } EPOS_drive_t;
 
 extern EPOS_drive_t EPOS_drive;

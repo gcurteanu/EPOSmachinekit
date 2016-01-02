@@ -1,8 +1,6 @@
 #include <stdlib.h>
 #include "dcf.h"
 
-#define eprintf(...) rt_printf(__VA_ARGS__)
-
 int clear_dcf (dcfstream_t *dcf) {
     
     if (!dcf)

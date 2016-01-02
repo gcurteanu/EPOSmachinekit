@@ -1,13 +1,11 @@
 /*
 dcf.h
 */
-#ifndef __DCF_H__
-#define __DCF_H__
+#ifndef __EPOS_DCF_H__
+#define __EPOS_DCF_H__
 
 #include <data.h>
-
-#define EPOS_DCF_MAX_SIZE   16384
-#define EPOS_DCF_MAX_NODES  16
+#include "config.h"
 
 typedef struct {
     UNS8    dcf[EPOS_DCF_MAX_SIZE];

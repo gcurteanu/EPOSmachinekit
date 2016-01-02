@@ -87,7 +87,7 @@ int    epos_add_slave (UNS8 slaveid) {
    if (slaveid == getNodeId(EPOS_drive.d) || slaveid < 1)
         return 0;
     
-    if (EPOS_drive.epos_slave_count >= MAX_EPOS_DRIVES)
+    if (EPOS_drive.epos_slave_count >= EPOS_MAX_DRIVES)
         return 0;
     
     // add the node to the list
@@ -435,7 +435,7 @@ int     epos_initialize_master (CO_Data * d, const char * dcf_file) {
     
     clear_dcf_set (&EPOS_drive.dcf_data);
     
-    for (idx = 0; idx < MAX_EPOS_DRIVES; idx++) {
+    for (idx = 0; idx < EPOS_MAX_DRIVES; idx++) {
         // clean the slaves
         EPOS_drive.epos_slaves[idx] = 0x00;
         
