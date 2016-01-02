@@ -44,7 +44,7 @@ else
 LIBS = -L/usr/local/lib -lcanfestival -lcanfestival_$(TARGET)
 endif
 
-OBJS_MASTER = master.o EPOScontrol.o gendcf.o ds302.o dcf.o epos.o
+OBJS_MASTER = master.o EPOScontrol.o ds302.o dcf.o epos.o
 
 #obj-m += canmaster
 #canmaster-objs := $(OBJS_MASTER)

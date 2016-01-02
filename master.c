@@ -38,7 +38,6 @@ void pause(void)
 
 #include "canfestival.h"
 #include "master.h"
-#include "gendcf.h"
 #include "EPOScontrol.h"
 #include "data.h"
 

@@ -4,10 +4,8 @@ component canmanager;
 pin out bit boot_complete   """DS302 boot completed""";
 
 
-//pin in s32 #.pin_position_cmd[5]  """Position command""";
-//pin in s32 #.pin_velocity_cmd[5]  """Velocity command""";
-//pin out s32 #.pin_position_fb[5]  """Position feedback""";
-//pin out s32 #.pin_velocity_fb[5]  """Velocity feedback""";
+// we are creating the pins / params manually. The above is just so that comp will shut up about "you must have at least one pin"
+// might be easier to convert to straight C and be done with it
 
 option extra_setup;
 option extra_cleanup;
@@ -31,8 +29,6 @@ author "Gabriel Curteanu";
 #include "epos.h"
 #include "ds302.h"
 #include "eposconfig.h"
-
-#define NMT_MASTER_NODE     0x7F
 
 int slaveid[EPOS_MAX_DRIVES] = { 0, 0, 0, 0, 0 };
 RTAPI_MP_ARRAY_INT(slaveid,EPOS_MAX_DRIVES,"CAN slave IDs controlled by this master");
@@ -66,52 +62,27 @@ void *pthread_lib_handle;
 char* LibraryPath="/usr/local/lib/libcanfestival_can_socket.so";
 s_BOARD MasterBoard = {"0", "1M"};
 
+/* callbacks kept mostly for debugging */
+/* Beware, DS302 overrides some of them */
+
 void CanManager_heartbeatError(CO_Data* d, UNS8 heartbeatID)
 {
-    rtapi_print("CanManager_heartbeatError %d\n", heartbeatID);
+    rtapi_print("CANmanager: CB heartbeatError %02x\n", heartbeatID);
 }
 
 void CanManager_initialisation(CO_Data* d)
 {
-    rtapi_print("CanManager initializing\n");
+    rtapi_print("CANmanager: CB initialization\n");
 }
 
 void CanManager_preOperational(CO_Data* d)
 {
-    rtapi_print("CanManager is in preOperational mode \n");
+    rtapi_print("CANmanager: CB preOperational mode \n");
 }
 
 void CanManager_operational(CO_Data* d)
 {
-    rtapi_print("CanManager_operational\n");
-
-    //This constants are used to start the SYNC signal from the Master LCNC.
-    UNS32 SYNC_TIME = 0x07D0;   // 0x03E8 This value is for a 1000 uSeg SYNC cycle. TODO Garcia: this could be a parameter for this component
-    UNS32 START_SYNC = 0x40000080;  // Reference for this value "CANOpen Memento of Francis Dupin, August 2009", SYNC configuration.
-
-#ifdef __USE_SYNC__
-    UNS32 size = sizeof(UNS32);
-    if (sync_enabled) {
-        //TODO Garcia: SYNC configurartion could be optional using an sync_enable param. But the transmision mode of the PDOs have to be set according to this.
-        //This constant is used to start the SYNC signal from the Master LCNC.
-        /*****************************************
-         *       Set Master to trasmit SYNCs     *
-         *****************************************/
-        writeLocalDict( &EPOScontrol_Data, /*CO_Data* d*/
-                0x1006, /*UNS16 index*/
-                0x00, /*UNS8 subind*/ 
-                &SYNC_TIME, /*void * pSourceData,*/ 
-                &size, /* UNS8 * pExpectedSize*/
-                RW);  /* UNS8 checkAccess */
-
-        writeLocalDict( &EPOScontrol_Data, /*CO_Data* d*/
-                0x1005, /*UNS16 index*/
-                0x00, /*UNS8 subind*/ 
-                &START_SYNC, /*void * pSourceData,*/ 
-                &size, /* UNS8 * pExpectedSize*/
-                RW);  /* UNS8 checkAccess */
-    }
-#endif
+    rtapi_print("CANmanager: CB operational\n");
 }
 
 void CanManager_stopped(CO_Data* d)
@@ -121,7 +92,7 @@ void CanManager_stopped(CO_Data* d)
 
 void CanManager_post_sync(CO_Data* d)
 {
-//    rtapi_print(" 0x2000:%2.2d 0x2014:%2.2d 0x2015:%2.2d          \r",MasterMapInt32_1, MasterMapInt32_5, MasterMapInt32_6);
+    rtapi_print("CANmanager: CB SYNC\n");
 }
 
 void CanManager_post_TPDO(CO_Data* d)
@@ -131,12 +102,12 @@ void CanManager_post_TPDO(CO_Data* d)
 
 void CanManager_post_SlaveBootup(CO_Data* d, UNS8 nodeid)
 {
-    rtapi_print("CANmanager: CB SlaveBootup %x\n", nodeid);
+    rtapi_print("CANmanager: CB SlaveBootup %02x\n", nodeid);
 }
 
 void CanManager_post_SlaveStateChange(CO_Data* d, UNS8 nodeid,  e_nodeState newNodeState)
 {
-    rtapi_print("CANmanager: CB SlaveStateChange %x -> %x\n", nodeid, newNodeState);
+    rtapi_print("CANmanager: CB SlaveStateChange %02x -> %02x\n", nodeid, newNodeState);
 }
 
 /***************************  INIT  *****************************************/
@@ -149,7 +120,7 @@ void InitNodes(CO_Data* d, UNS32 id)
 void Exit(CO_Data* d, UNS32 id)
 {
     // is this needed? disable for now
-    // masterSendNMTstateChange(&EPOScontrol_Data, NMT_MASTER_NODE, NMT_Stop_Node);
+    // masterSendNMTstateChange(&EPOScontrol_Data, master_can_id, NMT_Stop_Node);
 
     //Stop master
     setState(&EPOScontrol_Data, Stopped);
@@ -240,7 +211,7 @@ EXTRA_SETUP()
     }
 
     // Set the master ID
-    setNodeId(&EPOScontrol_Data, NMT_MASTER_NODE);
+    setNodeId(&EPOScontrol_Data, master_can_id);
 
     // initialize the master
     epos_initialize_master (&EPOScontrol_Data, dcf);
