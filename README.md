@@ -6,13 +6,12 @@ CANopen EPOS controller for Machinekit
 
 - Develop a Machinekit/LinuxCNC component able to control CANopen Maxon EPOS positioning controllers (or with minimal changes other DS-402 drives)
 
-Component should be able to control multiple drives, and do so with a simple configuration. Due to the fact there can be only one NMT master, and only one Configuration Manager, 
-the 2 are combined into a CAN manager and only ONE instance can be present. This should be handled via the LinuxCNC/MK component.
-(note: There is a possibility to have multiple CAN buses, and each can have it's own. Will probably require minor component changes to support multi-instance)
+  Component should be able to control multiple drives, and do so with a simple configuration. Due to the fact there can be only one NMT master, and only one Configuration Manager, the 2 are combined into a CAN manager and only ONE instance can be present. This should be handled via the LinuxCNC/MK component.  
+  (note: There is a possibility to have multiple CAN buses, and each can have it's own. Will probably require minor component changes to support multi-instance)
 
-Currently implements: CiA 301 (CanFestival mostly), CiA 302 (own code) as Configuration Manager / Master boot, CiA 402 (limited due to early stage of development, but the major state machines done)
+  Currently implements: CiA 301 (CanFestival mostly), CiA 302 (own code) as Configuration Manager / Master boot, CiA 402 (limited due to early stage of development, but the major state machines done)
 
-Not Implemented: CiA 302 software download, SDO manager, NMT requests. Not planned, not useful for the proposed scope
+  Not Implemented: CiA 302 software download, SDO manager, NMT requests. Not planned, not useful for the proposed scope
 
 ##Targets:
 - create the required CanFestival infrastrucuture to support the CANopen operations
