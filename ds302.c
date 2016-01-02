@@ -31,6 +31,24 @@ INIT_SM_TYPE(BOOTMASTER,_sm_BootMaster_States,TimerCallback_t,
     _sm_BootMaster_operwait,
     _sm_BootMaster_slavestart);
 
+void _sm_BootSlave_initial(CO_Data*, UNS8);
+void _sm_BootSlave_getDeviceType(CO_Data*, UNS8);
+void _sm_BootSlave_getIdentification_1(CO_Data*, UNS8);
+void _sm_BootSlave_getIdentification_2(CO_Data*, UNS8);
+void _sm_BootSlave_getIdentification_3(CO_Data*, UNS8);
+void _sm_BootSlave_getIdentification_4(CO_Data*, UNS8);
+void _sm_BootSlave_decideBCPath(CO_Data*, UNS8);
+// insert B path here
+void _sm_BootSlave_doConfigurationVersionChecks(CO_Data*, UNS8);
+void _sm_BootSlave_verifyConfigurationVersion_1(CO_Data*, UNS8);
+void _sm_BootSlave_verifyConfigurationVersion_2(CO_Data*, UNS8);
+void _sm_BootSlave_downloadConfiguration(CO_Data*, UNS8);
+void _sm_BootSlave_startErrorControlService(CO_Data*, UNS8);
+void _sm_BootSlave_waitHeartbeat(CO_Data*, UNS8);
+void _sm_BootSlave_startNodeGuard(CO_Data*, UNS8);
+void _sm_BootSlave_errorControlStarted(CO_Data*, UNS8);  // here we need to check if we went D/noconfig and exit
+void _sm_BootSlave_startSlave(CO_Data*, UNS8);
+    
 INIT_SM_TYPE(BOOTSLAVE,_sm_BootSlave_States,SDOCallback_t,
     _sm_BootSlave_initial,
     _sm_BootSlave_getDeviceType,
