@@ -52,7 +52,7 @@ testing the CAN with a 25mtr CAN cable with 120ohm termination at both ends, poi
 ##Items needing attention:
 - serious bug in CanFestival timer scheduling. Due to a TIMEVAL to UNS32 conversion, in case of negative values, leads to the timers to misfire BADLY. Redefined the overrun as timeval, and removed the conversion.
 Not even sure why that was there since all operations are on TIMEVAL , not UNS32. Quick fix but was a pain to figure out
-```
+```C
 In file src/timer.c, start of TimeDispatch function, change as follows:
         /* Get time since timer signal */
         TIMEVAL overrun = getElapsedTime();
@@ -60,7 +60,7 @@ In file src/timer.c, start of TimeDispatch function, change as follows:
 
 - there is no IOCT for loopback in the Xenomai API as shipped with the Debian/MK packages.
 This is easy to fix, the code block in the drivers/can_socket/can_socket.c
-```
+```C
 /*
   {
     int loopback = 1;
@@ -101,21 +101,22 @@ Our format should directly describe the steps and should be a 1:1 mapping to SDO
 There is a ConciseDCF implementation in CanFestival but that is rather rudimentary and not CiA 302 compliant.
 
 Proposed format (pretty much the same as the one used in the dcf example from CanFestival):
-[slave id]
-Index Subindex Size Value
+>[slave id]
+>Index Subindex Size Value
 ...
 
-slave id = decimal/hex *16 bits used)
-index / subindex = decimal/hex (8 bits used)
-size = decimal/hex in BYTES (full value used, but it's pointless to be more than 4)
-value = decimal/hex (max 32 bits used) .
+- slave id = decimal/hex *16 bits used)
+- index / subindex = decimal/hex (8 bits used)
+- size = decimal/hex in BYTES (full value used, but it's pointless to be more than 4)
+- value = decimal/hex (max 32 bits used) .
 
 Example:
-[1]
-0x1400 0x01 4 0x10000000
+>[1]
+>0x1400 0x01 4 0x10000000
 ...
 
 ~~For initial testing, we will use the existing DCF example code from CanFestival~~
+
 Updated ConciseDCF code was implemented and there's also a capability to configure the master via ConciseDCF 
 outside the normal CiA 302 boot process (prior to CiA 302)
 
@@ -125,79 +126,87 @@ outside the normal CiA 302 boot process (prior to CiA 302)
 
 ## Module options
 
-- master_can_id=\<CAN ID\>
+- `master_can_id=<CAN ID>`
 Sets the CAN ID of the master node (the component). It is by default 0x7F
 
-- slaveid=<slave1>,<slave2>,...,slave<EPOS_MAX_DRIVES>
+- `slaveid=<slave1>,<slave2>,...,slave<EPOS_MAX_DRIVES>`
 Defines the slaves that are being managed. Those are added as MANDATORY slaves in the CiA 302 process, module will NOT start if one of the slaves is not responding or has an error.
 
-- heartbeat=<slave1>,<slave2>,...,slave<EPOS_MAX_DRIVES>
+- `heartbeat=<slave1>,<slave2>,...,slave<EPOS_MAX_DRIVES>`
 Defines the heartbeat for each slave (as a CONSUMER). The producer side (on the drive itself) needs to be either configured manually or via CDCF and MUST match the value set in order to prevent 
 drives being detected as disconnected. Set the hearbeat time for the slave at least as <hb producer time>*1.5 for small values, take into account some amount of jitter will be present
 
-_*NOTE: if a heartbeat is set it WILL be used during the boot process. Boot will stop waiting to receive a heartbeat from the slave. A zero values disables heartbeat checking*_
+**NOTE: if a heartbeat is set it WILL be used during the boot process. Boot will stop waiting to receive a heartbeat from the slave. A zero values disables heartbeat checking**
 
-- dcf=\<filename\>
+- `dcf=<filename>`
 The DCF file name containing the data for configuring the slaves at boot-up time. THIS IS MANDATORY (for now, due to code not being 100% right). 
 Each defined slaveid must have at least one entry in the file, for example setting the heartbeat producer time (ex for a 50ms heartbeat: 0x1017 0x00 2 0x0032)
 
 ## Pins / parameters
 
-- param slave-count
+- `param slave-count`
 The number of slaves that are being managed
 
-- param '<driveno>'.slave-id
+- `param <driveno>.slave-id`
 The CAN ID of the slave for that particular drive
 
-- pin '<driveno>'.enable
-The pin enables / disables the drive.
+- `pin '<driveno>'.enable`
+The pin enables / disables the drive. (not done yet/high priority)
 When enable goes high, drive seeks to get to the enabled state, clearing all the drive errors in the process
 When enable goes low, drive is disabled (does a full stop via quickstop automatically?)
 
-- pin '<driveno>'.enabled
+- `pin '<driveno>'.enabled`
 The drive is enabled (?) Not implemented. Maybe a "ready" signal to indicate presence? 
 
-- pin '<driveno>'.faulted
-At least one of the drives is faulted. This happens at heartbeat loss OR EMCY frame.
+- `pin '<driveno>'.faulted`
+At least one of the drives is faulted. This happens at heartbeat loss OR EMCY frame. (not done yet/high priority)
 Only way to clear it is via enable to high transition
 
-- pin '<driveno>'.control_type
-When 0 drive is in position mode (position command into effect)
-When 1 drive is in velocity mode (velocity command into effect)
+- `pin '<driveno>'.control_type`
+When 0 drive is in position mode (position command into effect).
+When 1 drive is in velocity mode (velocity command into effect). (not done yet/medium priority)
 
 - maxvel
 - maxaccel
 Macimal velocity / acceleration values
 These are NOT implemented yet (no support for SDOs after startup)
 
-- pin '<driveno>'.counts
+- `pin '<driveno>'.counts`
 raw encoder / position from the drive
 
-- param '<driveno>'.position_scale
+- `param '<driveno>'.position_scale`
 scale for positioning. position = counts / position-scale
 
-- pin '<driveno>'.position_cmd
+- `pin '<driveno>'.position_cmd`
 position command (for position control)
 
-- pin '<driveno>'.velocity_cmd
+- `pin '<driveno>'.velocity_cmd`
 velocity command (for velocity control) (not implemented yet)
 
-- pin '<driveno>'.position_fb
+- `pin '<driveno>'.position_fb`
 position feedback
 
-- pin '<driveno>'.velocity_fb
+- `pin '<driveno>'.velocity_fb`
 velocity feedback (not implemented yet)
 
 # Internal CANopen objects
 
 The module uses a set of internal CAN objects in the OD for drive control
-The mapping is as follows (rule is moving from 0x6000 to the 0x5000 manufacturer specific area):
+The mapping is as follows (rule is moving from 0x2000 / 0x6000 to the 0x4000 / 0x5000 manufacturer specific area, keeping the last byte in place):
 
-* 0x5040 (UInt16) - DS 402 control word array[numdrives] (DS 402 at 0x6040)
-* 0x5041 (UInt16) - DS 402 status word array[numdrives] (DS 402 at 0x6041)
-* 0x5060 (Int8) - DS 402 modes of operation
-* 0x5061 (Int8) - DS 402 modes of operation display
+* 0x5040 (UNS16) - DS 402 control word (DS 402 at 0x6040)
+* 0x5041 (UNS16) - DS 402 status word (DS 402 at 0x6041)
+* 0x5060 (INT8) - DS 402 modes of operation
+* 0x5061 (INT8) - DS 402 modes of operation display
+* 0x5064 (INT32) - DS 402 position actual value
+* 0x506C (INT32) - DS 402 velocity actual value
+* 0x4062 (INT32) - Position demand value
+* 0x406B (INT32) - Velocity demand value
+* 0x4071 (UNS16) - Digital In (Maxon specific)
+* 0x4078 (UNS16) - Digital Out (Maxon specific)
 
+The above objects are all the objects responsible for motion control of the slaves, and each is an array having a number of elements equal to the maximum number of slaves defined in the code. Those can be used for overriding the PDO mapping in the master via CDCF.
+The index is the slave ordinal, NOT the CAN ID (eq. first slave in the params is CAN 0x14, and will have the index 0 for the above arrays)
 
 # PDO mapping structure
 
@@ -206,6 +215,7 @@ However, there is support for using ConciseDCF for configuring the master node t
 ConciseDCF can configure ANY object in the object dictionary as long as it's writable and present.
 
 *Special note*
+
 For updating PDOs, the following rules must be observed (per CiA 301)
 - Update PDO parameters
   1. Disable the PDO by setting bit 31 to on (PDO COB-ID | 0x80000000) (some drives allow updates without disable in PreOperational)
@@ -217,6 +227,28 @@ For updating PDOs, the following rules must be observed (per CiA 301)
   3. Write the proper mapping count at subindex 0x00
   4. Re-enable the PDO
 
+**BEWARE**: For PPM the ControlWord **MUST** be sent along with the position demand value in the same PDO to ensure consistency. Otherwise, due to the PDO ordering, the slave might acknowledge the PREVIOUS value because the second PDO containing the actual value didn't arrive yet.
+
+More to come...
+CiA 402 mandates a specific PDO mapping, but that's sub-optimal for most cases.
+Cia 402 states:
+PDO nr | RxPDO | TxPDO
+-----------------------
+0 | ControlWord | StatusWord
+1 | CW + ModesOfOperation | SW + ModesOfOperation Display
+2 | CW + Target Position | SW + Position Actual
+3 | CW + Target Velocity | SW + Velocity Actual
+
+In order to minimize the PDO requirements the following seem to work just fine:
+PDO nr | RxPDO(slave) | TxPDO(slave)
+-----------------------
+0 | ControlWord(2) + ModesOfOperation(1) + DigitalOut(2) | StatusWord(2) + ModesOfOperation Display(1) + DigitalIn(2)
+1 | CW(2) + Target Position(4) | Position Actual(4) + Velocity Actual(4)
+2 | CW(2) + Target Velocity(4) | not used
+3 | not used | not used
+
+The only problem is the duplication of the ControlWord leading sometimes to 2 PDOs being sent (this can be mitigated by firing just PDO 1 for moves)
+There is no duplication on the return path, both actuals are return via a single PDO (and this is the majority of the traffic)
 
 # Cia 402 modes
 ## PPM - Profile Position Mode
