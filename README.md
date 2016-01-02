@@ -2,34 +2,45 @@
 CANopen EPOS controller for Machinekit
 ...
 
-Main goal for this project:
+##Main goal for this project:
 
 - Develop a Machinekit/LinuxCNC component able to control CANopen Maxon EPOS positioning controllers (or with minimal changes other DS-402 drives)
 
-Component should be able to control multiple drives, and do so with a simple configuration
+Component should be able to control multiple drives, and do so with a simple configuration. Due to the fact there can be only one NMT master, and only one Configuration Manager, 
+the 2 are combined into a CAN manager and only ONE instance can be present. This should be handled via the LinuxCNC/MK component.
+(note: There is a possibility to have multiple CAN buses, and each can have it's own. Will probably require minor component changes to support multi-instance)
 
+Currently implements: CiA 301 (CanFestival mostly), CiA 302 (own code) as Configuration Manager / Master boot, CiA 402 drives
+Not Implemented: CiA 302 software download, SDO manager, NMT requests. Not planned, not useful for the proposed scope
 
-Targets:
+##Targets:
 - create the required CanFestival infrastrucuture to support the CANopen operations
-- support for the DS-302 boot process and automatic configuration updates for the CANopen devices via concise DCF (0x1F22).
-The CanFestival existing DCF seems to be lacking a lot of required features
+    * current status: _*mostly complete*_
+- support for the DS-302 boot process and automatic configuration updates for the CANopen devices via concise DCF (0x1F22). The CanFestival existing DCF seems to be lacking a lot of required features
+    * current status: _*CiA 302 done, works, needs various updates*_
 - support for the DS-402 state machine allowing the drive operation
-- support for profile position / speed as well as direct position / velocity modes as a minimum.
-Probably the profile modes will not be useful directly and we'll end up using the built in profile generator in Machinekit/LinuxCNC
+    * current status: _*CiA 402 state machines present, needs further features*_
+- support for profile position / speed as well as direct position / velocity modes as a minimum. Probably the profile modes will not be useful directly and we'll end up using the built in profile generator in Machinekit/LinuxCNC
+    * current status: _*PPM completed along with the Command/Acknowledge state machine for multiple profile moves (not used in LinuxCNC/MK)*_ . This was tested on real hardware running under LinuxCNC/Machinekit as axis A and provides a VERY good and stable response with a 1kHz servo loop.
 
+##Current status:
 
+* Jan 2015:
+  - LinuxCNC/Machinekit component created, and tested. Works better than expected. Additional code, cleanup in progress. Support for multi-axis operation ongoing
+  - next target is to integrate the ConciseDCF into a larger configuration method, yet to be determined. ConciseDCF is VERY good for hardware operation/upload, but writing it is problematic/error prone
+  - update the CiA 302 to the latest version I could find
 
-Current status:
-- initial (messy) implementation done to learn the CanFestival stack capabilities and modes to control the drive. Along with constraints due to the RT drivers.
+* Dec 2015:
+  - initial (messy) implementation done to learn the CanFestival stack capabilities and modes to control the drive. Along with constraints due to the RT drivers.
 It is functional, and able to position the drive and get position data in realtime with minimal external coding.
 Moves from external application (MK/LinuxCNC) should be done by simply working to the values in the OD, the TPDOs/RPDOs taking over independently from there.
-- initial (messy) implementation of the DS-302 code, moving to a more standard state machine setup (ongoing). Still lacking the DCF upload
-- initial (very messy) DS-402 state machine support (just goes to Operation Enabled if able and keeps it there)
+  - initial (messy) implementation of the DS-302 code, moving to a more standard state machine setup (ongoing). Still lacking the DCF upload
+  - initial (very messy) DS-402 state machine support (just goes to Operation Enabled if able and keeps it there)
 
 
-Hardware:
+##Hardware:
 - Peak PCI dual port (opto isolated) CAN card
-- Xenomai Machinekit kernel
+- Xenomai Machinekit kernel running on Debian
 - Using the RT-CAN socket interfaces (not the regular ones) included in the kernel
 - No need for the Peak Linux driver. It is not used / useful from what can be seen
 - The RT-CAN in the kernel seems stable, but can not cope with Linux interrupt sharing when used in the RT model. Peak card MUST NOT share it's IRQ with other devices... Or else kernel panics.
@@ -37,10 +48,38 @@ Hardware:
 As far as positioning controller, Maxon EPOS 70/10. Looks like a very standard implementation of DS 402 is used, so if it works for this, it will work for others as well
 testing the CAN with a 25mtr CAN cable with 120ohm termination at both ends, point to point
 
+##Items needing attention:
+- serious bug in CanFestival timer scheduling. Due to a TIMEVAL to UNS32 conversion, in case of negative values, leads to the timers to misfire BADLY. Redefined the overrun as timeval, and removed the conversion.
+Not even sure why that was there since all operations are on TIMEVAL , not UNS32. Quick fix but was a pain to figure out
+```
+In file src/timer.c, start of TimeDispatch function, change as follows:
+        /* Get time since timer signal */
+        TIMEVAL overrun = getElapsedTime();
+```
+
+- there is no IOCT for loopback in the Xenomai API as shipped with the Debian/MK packages.
+This is easy to fix, the code block in the drivers/can_socket/can_socket.c
+```
+/*
+  {
+    int loopback = 1;
+    err = CAN_SETSOCKOPT(*(int *)fd0, SOL_CAN_RAW, CAN_RAW_LOOPBACK,
+               &loopback, sizeof(loopback));
+    if (err) {
+        fprintf(stderr, "rt_dev_setsockopt: %s\n", strerror (CAN_ERRNO (err)));
+        goto error_close;
+    }
+  }
+*/
+```
+In fact, using rtcanconfig this can be set on the card itself (ex: rtcanconfig rtcan0 -c loopback -b 1000000 start)
+This is ONLY needed in case of using SYNC telegrams, since those are generated over the wire and otherwise are NOT received/processed by the local node
+SYNC is NOT USED at this moment (planned, but on a 1ms cycle it will stop a random amount of time. Not sure why yet, planned feature in order to support SYNC based PDOs)
 
 # DCF file format
 
-The format for initializing slaves is the DCF format, but not sure if a full implementation is required
+The format for initializing slaves is the DCF format, but not sure if a full implementation is required.
+A full DCF parser is quite a lot of work and will not add much compared to binary ConciseDCF streams.
 
 Standard DCF format is a bit complex for our needs, and also requires some application logic to apply in case of the PDO mappings
 (per 301 : disable PDO, set mapping count to zero, load mapping, configure PDO, enable mapping and PDO)
@@ -57,29 +96,27 @@ will be created by writing to its communication parameter COB-ID. When subindex 
 service. If an error is detected the device has to transmit the Abort SDO Transfer Service with one of
 the abort codes 0602 0000h, 0604 0041h or 0604 0042h."
 
-Our format should directly describe the steps and should be a 1:1 mapping to SDO actions. One problem to cope with is describing the data size of the objects
+Our format should directly describe the steps and should be a 1:1 mapping to SDO actions. One problem to cope with is describing the data size of the objects.
+There is a ConciseDCF implementation in CanFestival but that is rather rudimentary and not CiA 302 compliant.
 
-Proposed format:
+Proposed format (pretty much the same as the one used in the dcf example from CanFestival):
 [slave id]
-Index.Subindex = Size Value
+Index Subindex Size Value
 ...
 
-slave id = decimal
-index / subindex = HEX without specifier?
-size = decimal
-value = either hex or decimal notation.
+slave id = decimal/hex *16 bits used)
+index / subindex = decimal/hex (8 bits used)
+size = decimal/hex in BYTES (full value used, but it's pointless to be more than 4)
+value = decimal/hex (max 32 bits used) .
 
 Example:
 [1]
-1400.1 = 32 0x10000000
+0x1400 0x01 4 0x10000000
 ...
 
-The standard DCF-like format might come, but since we're now doing Concise DCF the file format is up to us
-
-~For initial testing, we will use the existing DCF example code from CanFestival~
+~~For initial testing, we will use the existing DCF example code from CanFestival~~
 Updated ConciseDCF code was implemented and there's also a capability to configure the master via ConciseDCF 
 outside the normal CiA 302 boot process (prior to CiA 302)
-
 
 
 
