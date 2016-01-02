@@ -28,6 +28,7 @@ CANopen EPOS controller for Machinekit
 
 * Jan 2015:
   - LinuxCNC/Machinekit component created, and tested. Works better than expected. Additional code, cleanup in progress. Support for multi-axis operation ongoing
+  - new state machines for 302 in place and code cleaned up somewhat, along with 402 simplified machine (most transitions in 402 are implicit)
   - next target is to integrate the ConciseDCF into a larger configuration method, yet to be determined. ConciseDCF is VERY good for hardware operation/upload, but writing it is problematic/error prone
   - update the CiA 302 to the latest version I could find
 
