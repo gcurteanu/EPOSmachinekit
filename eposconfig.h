@@ -2,8 +2,8 @@
 Configuration defines
 */
 
-#ifndef __EPOS_CONFIG_H__
-#define __EPOS_CONFIG_H__
+#ifndef __EPOSCONFIG_H__
+#define __EPOSCONFIG_H__
 
 #if defined(RTAPI)
 #define eprintf(...) rtapi_print (__VA_ARGS__)

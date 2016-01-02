@@ -5,7 +5,7 @@ dcf.h
 #define __EPOS_DCF_H__
 
 #include <data.h>
-#include "config.h"
+#include "eposconfig.h"
 
 typedef struct {
     UNS8    dcf[EPOS_DCF_MAX_SIZE];

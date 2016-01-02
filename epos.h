@@ -6,7 +6,7 @@
 
 #include <data.h>
 #include "dcf.h"
-#include "config.h"
+#include "eposconfig.h"
 
 typedef struct {
     UNS16           error_code;

@@ -1,7 +1,7 @@
 #ifndef __EPOS_DS302_H__
 #define __EPOS_DS302_H__
 
-#include "config.h"
+#include "eposconfig.h"
 
 // 0x1F80 bits
 #define DS302_DEVICE_NMT_MASTER         0x01    // is the device the NMT master
