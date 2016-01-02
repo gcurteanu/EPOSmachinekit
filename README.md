@@ -10,7 +10,8 @@ Component should be able to control multiple drives, and do so with a simple con
 the 2 are combined into a CAN manager and only ONE instance can be present. This should be handled via the LinuxCNC/MK component.
 (note: There is a possibility to have multiple CAN buses, and each can have it's own. Will probably require minor component changes to support multi-instance)
 
-Currently implements: CiA 301 (CanFestival mostly), CiA 302 (own code) as Configuration Manager / Master boot, CiA 402 drives
+Currently implements: CiA 301 (CanFestival mostly), CiA 302 (own code) as Configuration Manager / Master boot, CiA 402 (limited due to early stage of development, but the major state machines done)
+
 Not Implemented: CiA 302 software download, SDO manager, NMT requests. Not planned, not useful for the proposed scope
 
 ##Targets:
@@ -217,9 +218,32 @@ For updating PDOs, the following rules must be observed (per CiA 301)
   4. Re-enable the PDO
 
 
+# Cia 402 modes
+## PPM - Profile Position Mode
 
+The Profile Position Mode is apparently the easiest way to make things move from MK. Profile Position Mode expects a list of points and then relies on the drive to generate the profiles for the moves. In continuous mode, if the velocities / accelerations loaded into the drive match the MK ones, there is absolutely no detectable issue using it.
 
+The only complication with PPM is the fact it relies on a handshake between the master and the drive
+- master sends the desired position and sets "New set-point" bit in the ControlWord
+- slave (drive) acknowledges the set point by setting "Set-point acknowledged" bit in the StatusWord
+- master clears the "New set-point" bit to prepare for the next
+- slave (drive) clears the "Set-point acknowledged" to indicate it processed the set-point and it's ready for the next one
 
+In continuous motion mode, a new set point is executed immediately, and practically leads to a clean profile if the set points are fed continuously. The segmented mode (execute each set point individually, from stopped->setpoint->stopped) is not useful for MK integration
+
+This protcol is currently fully implemented via a state machine and PDO exchanges, and it can run on a 1kHz cycle without issues with event-driven PDOs at 100ms/200ms.
+The Maxon positioning controller used has a very big buffer for set-points (can hold hundreds of moves based on experience so far), bt having a PDO exchange cycle longer than the setpoint generating frequency can lead to problems.
+In the current setup, the functional testing shows absolutely no issue, G0 moves for an A axis show a ferror of about 0.2-0.3 degrees maximum using PPM (velocity in MK 540, accel 300 for a motor geared down 2:1 witch a 10k PPR encoder)
+
+# Driver behind the project:
+
+Mill with a servo-driven A axis (home-built) that should be used as a positioning axis and also as a rotary machining spindle (lathe). The mode should be changed on the fly. A axis also has a pneumatic/hydraulic brake and sensors for confirming locking/unlocking in positioning mode, and those will be controlled using the GPIO from the Maxon drive further reducing the wiring requirements.
+
+One additional project was decoding the 1Mbps serial stream from the Panasonic servo used, containing the Hall commutation data (motor generates RS422 A/B/I encoder + RS422 serial encoded Hall). Decoding done via FPGA, and will also integrate a brake safety interlock to prevent applying the brake when motor is turning at speed, and do so at a hardware level, not software (the ammount of energy stored in a servo going at 1000+rpm is high enough to cook a servo drive if stopped instantly)
+
+Rest of the mill using closed-loop steppers using micron resolution glass scales on X/Y/Z, all driven/controller from a Mesa 5i20. Initial plan of using an analog servo amp (AMC) for driving the A axis scrapped due to brake being applied while motor at speed and drive blowing out as a result. Maxon 300583 is a very good positioning controller, and has plenty of I/O options useful for various purposes.
+
+A possible extension of the code will be into CiA 401 due to several Wago PLCs and SMC valve controllers using CANopen.
 
 # Credits:
 
