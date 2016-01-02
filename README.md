@@ -125,7 +125,7 @@ outside the normal CiA 302 boot process (prior to CiA 302)
 
 ## Module options
 
-- master_can_id='<CAN ID>'
+- master_can_id=\<CAN ID\>
 Sets the CAN ID of the master node (the component). It is by default 0x7F
 
 - slaveid=<slave1>,<slave2>,...,slave<EPOS_MAX_DRIVES>
@@ -137,7 +137,7 @@ drives being detected as disconnected. Set the hearbeat time for the slave at le
 
 _*NOTE: if a heartbeat is set it WILL be used during the boot process. Boot will stop waiting to receive a heartbeat from the slave. A zero values disables heartbeat checking*_
 
-- dcf=<filename>
+- dcf=\<filename\>
 The DCF file name containing the data for configuring the slaves at boot-up time. THIS IS MANDATORY (for now, due to code not being 100% right). 
 Each defined slaveid must have at least one entry in the file, for example setting the heartbeat producer time (ex for a 50ms heartbeat: 0x1017 0x00 2 0x0032)
 
