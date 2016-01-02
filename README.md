@@ -21,7 +21,8 @@ CANopen EPOS controller for Machinekit
 - support for the DS-402 state machine allowing the drive operation
     * current status: _*CiA 402 state machines present, needs further features*_
 - support for profile position / speed as well as direct position / velocity modes as a minimum. Probably the profile modes will not be useful directly and we'll end up using the built in profile generator in Machinekit/LinuxCNC
-    * current status: _*PPM completed along with the Command/Acknowledge state machine for multiple profile moves (not used in LinuxCNC/MK)*_ . This was tested on real hardware running under LinuxCNC/Machinekit as axis A and provides a VERY good and stable response with a 1kHz servo loop.
+    * current status: _*PPM completed along with the Command/Acknowledge state machine for multiple profile moves (not used in LinuxCNC/MK)*_ .  
+      This was tested on real hardware running under LinuxCNC/Machinekit as axis A and provides a VERY good and stable response with a 1kHz servo loop.
 
 ##Current status:
 
@@ -31,9 +32,9 @@ CANopen EPOS controller for Machinekit
   - update the CiA 302 to the latest version I could find
 
 * Dec 2015:
-  - initial (messy) implementation done to learn the CanFestival stack capabilities and modes to control the drive. Along with constraints due to the RT drivers.
-It is functional, and able to position the drive and get position data in realtime with minimal external coding.
-Moves from external application (MK/LinuxCNC) should be done by simply working to the values in the OD, the TPDOs/RPDOs taking over independently from there.
+  - initial (messy) implementation done to learn the CanFestival stack capabilities and modes to control the drive. Along with constraints due to the RT drivers.  
+    It is functional, and able to position the drive and get position data in realtime with minimal external coding.  
+    Moves from external application (MK/LinuxCNC) should be done by simply working to the values in the OD, the TPDOs/RPDOs taking over independently from there.
   - initial (messy) implementation of the DS-302 code, moving to a more standard state machine setup (ongoing). Still lacking the DCF upload
   - initial (very messy) DS-402 state machine support (just goes to Operation Enabled if able and keeps it there)
 
@@ -50,7 +51,7 @@ testing the CAN with a 25mtr CAN cable with 120ohm termination at both ends, poi
 
 ##Items needing attention:
 - serious bug in CanFestival timer scheduling. Due to a TIMEVAL to UNS32 conversion, in case of negative values, leads to the timers to misfire BADLY. Redefined the overrun as timeval, and removed the conversion.
-Not even sure why that was there since all operations are on TIMEVAL , not UNS32. Quick fix but was a pain to figure out
+  Not even sure why that was there since all operations are on TIMEVAL , not UNS32. Quick fix but was a pain to figure out
 ```C
 In file src/timer.c, start of TimeDispatch function, change as follows:
         /* Get time since timer signal */
@@ -58,9 +59,8 @@ In file src/timer.c, start of TimeDispatch function, change as follows:
 ```
 
 - there is no IOCT for loopback in the Xenomai API as shipped with the Debian/MK packages.
-This is easy to fix, the code block in the drivers/can_socket/can_socket.c
+  This is easy to fix, the code block in the drivers/can_socket/can_socket.c
 ```C
-/*
   {
     int loopback = 1;
     err = CAN_SETSOCKOPT(*(int *)fd0, SOL_CAN_RAW, CAN_RAW_LOOPBACK,
@@ -70,7 +70,6 @@ This is easy to fix, the code block in the drivers/can_socket/can_socket.c
         goto error_close;
     }
   }
-*/
 ```
 In fact, using rtcanconfig this can be set on the card itself (ex: rtcanconfig rtcan0 -c loopback -b 1000000 start)
 This is ONLY needed in case of using SYNC telegrams, since those are generated over the wire and otherwise are NOT received/processed by the local node
@@ -100,18 +99,18 @@ Our format should directly describe the steps and should be a 1:1 mapping to SDO
 There is a ConciseDCF implementation in CanFestival but that is rather rudimentary and not CiA 302 compliant.
 
 Proposed format (pretty much the same as the one used in the dcf example from CanFestival):
->[slave id]
+>[slave id]  
 >Index Subindex Size Value
 ...
 
-- slave id = decimal/hex *16 bits used)
-- index / subindex = decimal/hex (8 bits used)
-- size = decimal/hex in BYTES (full value used, but it's pointless to be more than 4)
-- value = decimal/hex (max 32 bits used) .
+- slave id = decimal/hex *16 bits used)  
+- index / subindex = decimal/hex (8 bits used)  
+- size = decimal/hex in BYTES (full value used, but it's pointless to be more than 4)  
+- value = decimal/hex (max 32 bits used)  
 
 Example:
->[1]
->0x1400 0x01 4 0x10000000
+>[1]  
+>0x1400 0x01 4 0x10000000  
 ...
 
 ~~For initial testing, we will use the existing DCF example code from CanFestival~~
@@ -126,67 +125,66 @@ outside the normal CiA 302 boot process (prior to CiA 302)
 ## Module options
 
 - `master_can_id=<CAN ID>`
-Sets the CAN ID of the master node (the component). It is by default 0x7F
+  Sets the CAN ID of the master node (the component). It is by default 0x7F
 
 - `slaveid=<slave1>,<slave2>,...,slave<EPOS_MAX_DRIVES>`
-Defines the slaves that are being managed. Those are added as MANDATORY slaves in the CiA 302 process, module will NOT start if one of the slaves is not responding or has an error.
+  Defines the slaves that are being managed. Those are added as MANDATORY slaves in the CiA 302 process, module will NOT start if one of the slaves is not responding or has an error.
 
 - `heartbeat=<slave1>,<slave2>,...,slave<EPOS_MAX_DRIVES>`
-Defines the heartbeat for each slave (as a CONSUMER). The producer side (on the drive itself) needs to be either configured manually or via CDCF and MUST match the value set in order to prevent 
-drives being detected as disconnected. Set the hearbeat time for the slave at least as <hb producer time>*1.5 for small values, take into account some amount of jitter will be present
+  Defines the heartbeat for each slave (as a CONSUMER). The producer side (on the drive itself) needs to be either configured manually or via CDCF and MUST match the value set in order to prevent drives being detected as disconnected. Set the hearbeat time for the slave at least as <hb producer time>*1.5 for small values, take into account some amount of jitter will be present
 
-**NOTE: if a heartbeat is set it WILL be used during the boot process. Boot will stop waiting to receive a heartbeat from the slave. A zero values disables heartbeat checking**
+  **NOTE: if a heartbeat is set it WILL be used during the boot process. Boot will stop waiting to receive a heartbeat from the slave. A zero values disables heartbeat checking**
 
 - `dcf=<filename>`
-The DCF file name containing the data for configuring the slaves at boot-up time. THIS IS MANDATORY (for now, due to code not being 100% right). 
-Each defined slaveid must have at least one entry in the file, for example setting the heartbeat producer time (ex for a 50ms heartbeat: 0x1017 0x00 2 0x0032)
+  The DCF file name containing the data for configuring the slaves at boot-up time. THIS IS MANDATORY (for now, due to code not being 100% right). 
+  Each defined slaveid must have at least one entry in the file, for example setting the heartbeat producer time (ex for a 50ms heartbeat: 0x1017 0x00 2 0x0032)
 
 ## Pins / parameters
 
 - `param slave-count`
-The number of slaves that are being managed
+  The number of slaves that are being managed
 
 - `param <driveno>.slave-id`
-The CAN ID of the slave for that particular drive
+  The CAN ID of the slave for that particular drive
 
 - `pin '<driveno>'.enable`
-The pin enables / disables the drive. (not done yet/high priority)
-When enable goes high, drive seeks to get to the enabled state, clearing all the drive errors in the process
-When enable goes low, drive is disabled (does a full stop via quickstop automatically?)
+  The pin enables / disables the drive. (not done yet/high priority)  
+  When enable goes high, drive seeks to get to the enabled state, clearing all the drive errors in the process  
+  When enable goes low, drive is disabled (does a full stop via quickstop automatically?)  
 
 - `pin '<driveno>'.enabled`
-The drive is enabled (?) Not implemented. Maybe a "ready" signal to indicate presence? 
+  The drive is enabled (?) Not implemented. Maybe a "ready" signal to indicate presence? 
 
 - `pin '<driveno>'.faulted`
-At least one of the drives is faulted. This happens at heartbeat loss OR EMCY frame. (not done yet/high priority)
-Only way to clear it is via enable to high transition
+  At least one of the drives is faulted. This happens at heartbeat loss OR EMCY frame. (not done yet/high priority)  
+  Only way to clear it is via enable to high transition
 
 - `pin '<driveno>'.control_type`
-When 0 drive is in position mode (position command into effect).
-When 1 drive is in velocity mode (velocity command into effect). (not done yet/medium priority)
+  When 0 drive is in position mode (position command into effect).  
+  When 1 drive is in velocity mode (velocity command into effect). (not done yet/medium priority)
 
 - maxvel
 - maxaccel
-Macimal velocity / acceleration values
-These are NOT implemented yet (no support for SDOs after startup)
+  Maximal velocity / acceleration values.  
+  These are NOT implemented yet (no support for SDOs after startup)
 
 - `pin '<driveno>'.counts`
-raw encoder / position from the drive
+  raw encoder / position from the drive
 
 - `param '<driveno>'.position_scale`
-scale for positioning. position = counts / position-scale
+  scale for positioning. position = counts / position-scale
 
 - `pin '<driveno>'.position_cmd`
-position command (for position control)
+  position command (for position control)
 
 - `pin '<driveno>'.velocity_cmd`
-velocity command (for velocity control) (not implemented yet)
+  velocity command (for velocity control) (not implemented yet)
 
 - `pin '<driveno>'.position_fb`
-position feedback
+  position feedback
 
 - `pin '<driveno>'.velocity_fb`
-velocity feedback (not implemented yet)
+  velocity feedback (not implemented yet)
 
 # Internal CANopen objects
 
