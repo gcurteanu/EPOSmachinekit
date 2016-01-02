@@ -1494,17 +1494,17 @@ ds302_boot_state_t  ds302_status (CO_Data* d)
 */
 ds302_boot_state_t  ds302_node_status (CO_Data* d, UNS8 nodeid)
 {
-    return DATA_SM (ds302_data._bootSlave[slaveid]).state;
+    return DATA_SM (ds302_data._bootSlave[nodeid]).state;
 }
 
 _sm_BootSlave_Codes ds302_node_result (CO_Data* d, UNS8 nodeid)
 {
-    return DATA_SM (ds302_data._bootSlave[slaveid]).result;
+    return DATA_SM (ds302_data._bootSlave[nodeid]).result;
 }
 
 UNS32   ds302_node_error (CO_Data* d, UNS8 nodeid)
 {
-    return DATA_SM (ds302_data._bootSlave[slaveid]).errorCode;
+    return DATA_SM (ds302_data._bootSlave[nodeid]).errorCode;
 }
 
 /*
