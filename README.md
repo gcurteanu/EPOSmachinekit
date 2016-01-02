@@ -129,7 +129,28 @@ enable / fault are general pins, a fault on one will fault the component. enable
 The module uses a set of internal CAN objects in the OD for drive control
 The mapping is as follows (rule is moving from 0x6000 to the 0x5000 manufacturer specific area):
 
-0x5040 (UInt16) - DS 402 control word array[numdrives] (DS 402 at 0x6040)
-0x5041 (UInt16) - DS 402 status word array[numdrives] (DS 402 at 0x6041)
-0x5060 (Int8) - DS 402 modes of operation
-0x5061 (Int8) - DS 402 modes of operation display
+* 0x5040 (UInt16) - DS 402 control word array[numdrives] (DS 402 at 0x6040)
+* 0x5041 (UInt16) - DS 402 status word array[numdrives] (DS 402 at 0x6041)
+* 0x5060 (Int8) - DS 402 modes of operation
+* 0x5061 (Int8) - DS 402 modes of operation display
+
+
+# PDO mapping structure
+
+In order for communication to function properly, PDOs need to be defined on the controllers and the master. At this moment, this is handled via different methods (ConciseDCF for the slaves, default hardcoded PDOs in the master).
+However, there is support for using ConciseDCF for configuring the master node too
+ConciseDCF can configure ANY object in the object dictionary as long as it's writable and present.
+
+*Special note*
+For updating PDOs, the following rules must be observed (per CiA 301)
+- Update PDO parameters
+  1. Disable the PDO by setting bit 31 to on (PDO COB-ID | 0x80000000) (some drives allow updates without disable in PreOperational)
+  2. Update the PDO settings (inhibit time, transmission type, etc)
+  3. Re-enable the PDO if that's all (or do this at the end if mapping changes are needed too
+- Update PDO mapping
+  1. Disable mapping by writing zero as the map count (@ subindex 0x00)
+  2. Update the subindexes 0x01 - end with the PDO mapping (UNS32 = 2 bytes index, 1 byte subindex, 1 byte lenght in bits (8/16/32/...)
+  3. Write the proper mapping count at subindex 0x00
+  4. Re-enable the PDO
+
+
