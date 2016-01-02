@@ -138,7 +138,7 @@ N | Data | Actual data for the Index / Sub-Idx
 
 ## Machinekit/LinuxCNC interface
 
-## Module options
+### Module options
 
 - `master_can_id=<CAN ID>`
   Sets the CAN ID of the master node (the component). It is by default 0x7F
@@ -155,7 +155,7 @@ N | Data | Actual data for the Index / Sub-Idx
   The DCF file name containing the data for configuring the slaves at boot-up time. THIS IS MANDATORY (for now, due to code not being 100% right). 
   Each defined slaveid must have at least one entry in the file, for example setting the heartbeat producer time (ex for a 50ms heartbeat: 0x1017 0x00 2 0x0032)
 
-## Pins / parameters
+### Pins / parameters
 
 - `param slave-count`
   The number of slaves that are being managed
@@ -202,7 +202,7 @@ N | Data | Actual data for the Index / Sub-Idx
 - `pin '<driveno>'.velocity_fb`
   velocity feedback (not implemented yet)
 
-# Internal CANopen objects
+## Internal CANopen objects
 
 The module uses a set of internal CAN objects in the OD for drive control
 The mapping is as follows (rule is moving from 0x2000 / 0x6000 to the 0x4000 / 0x5000 manufacturer specific area, keeping the last byte in place):
@@ -221,7 +221,7 @@ The mapping is as follows (rule is moving from 0x2000 / 0x6000 to the 0x4000 / 0
 The above objects are all the objects responsible for motion control of the slaves, and each is an array having a number of elements equal to the maximum number of slaves defined in the code. Those can be used for overriding the PDO mapping in the master via CDCF.
 The index is the slave ordinal, NOT the CAN ID (eq. first slave in the params is CAN 0x14, and will have the index 0 for the above arrays)
 
-# PDO mapping structure
+## PDO mapping structure
 
 In order for communication to function properly, PDOs need to be defined on the controllers and the master. At this moment, this is handled via different methods (ConciseDCF for the slaves, default hardcoded PDOs in the master).
 However, there is support for using ConciseDCF for configuring the master node too
@@ -265,8 +265,8 @@ PDO nr | RxPDO(slave) | TxPDO(slave)
 The only problem is the duplication of the ControlWord leading sometimes to 2 PDOs being sent (this can be mitigated by firing just PDO 1 for moves)
 There is no duplication on the return path, both actuals are return via a single PDO (and this is the majority of the traffic)
 
-# Cia 402 modes
-## PPM - Profile Position Mode
+## Cia 402 modes
+### PPM - Position Profile Mode
 
 The Profile Position Mode is apparently the easiest way to make things move from MK. Profile Position Mode expects a list of points and then relies on the drive to generate the profiles for the moves. In continuous mode, if the velocities / accelerations loaded into the drive match the MK ones, there is absolutely no detectable issue using it.
 
@@ -282,19 +282,33 @@ This protcol is currently fully implemented via a state machine and PDO exchange
 The Maxon positioning controller used has a very big buffer for set-points (can hold hundreds of moves based on experience so far), bt having a PDO exchange cycle longer than the setpoint generating frequency can lead to problems.
 In the current setup, the functional testing shows absolutely no issue, G0 moves for an A axis show a ferror of about 0.2-0.3 degrees maximum using PPM (velocity in MK 540, accel 300 for a motor geared down 2:1 witch a 10k PPR encoder)
 
-# Driver behind the project:
+### VPM - Velocity Profile Mode
+to come...
 
-Mill with a servo-driven A axis (home-built) that should be used as a positioning axis and also as a rotary machining spindle (lathe). The mode should be changed on the fly. A axis also has a pneumatic/hydraulic brake and sensors for confirming locking/unlocking in positioning mode, and those will be controlled using the GPIO from the Maxon drive further reducing the wiring requirements.
+### HMM - Homing Mode
+to come... Not very sure this is required for the scope proposed, since LinuxCNC/Machinekit can't do external homing to my knowledge (might be wrong on this)
 
-One additional project was decoding the 1Mbps serial stream from the Panasonic servo used, containing the Hall commutation data (motor generates RS422 A/B/I encoder + RS422 serial encoded Hall). Decoding done via FPGA, and will also integrate a brake safety interlock to prevent applying the brake when motor is turning at speed, and do so at a hardware level, not software (the ammount of energy stored in a servo going at 1000+rpm is high enough to cook a servo drive if stopped instantly)
+### Direct positioning mode (Maxon specific?)
+The Maxon EPOS supports a direct positioning mode, in which the internal profile generator is bypassed, and position data is fed directly to the positioning PID controller. This has some advantages (less PDOs since no more handshake is required as for PPM). However, not terribly standard it appears. But extremely easy to implement (just ensure the mode is correct and then just send the PDOs on each update call. BTW, the CanFestival code WILL check to ensure data changed before sending a PDO. If nothing changed, no PDO is sent. Simple to use.)
 
-Rest of the mill using closed-loop steppers using micron resolution glass scales on X/Y/Z, all driven/controller from a Mesa 5i20. Initial plan of using an analog servo amp (AMC) for driving the A axis scrapped due to brake being applied while motor at speed and drive blowing out as a result. Maxon 300583 is a very good positioning controller, and has plenty of I/O options useful for various purposes.
+This however requires pretty good latency, since data is fed directly into a very low latency PID. Since the docs state Maxon has a 1kHz positioning loop, it can be assumed a data update of around 1kHZ would work fine.
+
+### Direct velocity mode (Maxon specific?)
+Same as above, relies on external profile generation
+
+## Driver behind the project:
+
+Mill with a servo-driven A axis (home-built) that should be used as a positioning axis and also as a rotary machining spindle (lathe). The mode should be changeable on the fly between positioning and turning. The axis also has a pneumatic/hydraulic brake and sensors for confirming locking/unlocking in positioning mode, and those will be controlled using the GPIO from the Maxon drive further reducing the wiring requirements.
+
+One additional project was decoding the 1Mbps serial stream from the Panasonic servo used, containing the needed Hall commutation data (motor generates RS422 A/B/I encoder + RS422 serial encoded Hall). Decoding done via FPGA, and will also integrate a brake safety interlock to prevent applying the brake when motor is turning at speed, and do so at a hardware level, not software (the ammount of energy stored in a servo going at 1000+rpm is high enough to cook a servo drive if brake is applied when running)
+
+Rest of the mill using closed-loop steppers using micron resolution glass scales on X/Y/Z, all driven/controller from a Mesa 5i20. Initial plan of using an analog servo amp (AMC) for driving the A axis scrapped due to brake being applied while motor at speed and drive blowing out as a result. Maxon 300583 looks to be a very good positioning controller, and has plenty of I/O options useful for various purposes. Software for configuring / playing with the hardware is free, and documentation of the drive is VERY good and detailed / complete. Newer versions (EPOS2/EPOS3) look to be the same.
 
 A possible extension of the code will be into CiA 401 due to several Wago PLCs and SMC valve controllers using CANopen.
+Also maybe CiA 406 (encoders) would be a worthwile effort given the drive control usage of the code.
 
-# Credits:
+## Credits:
 
-- The CanFestival team for creating it, it's really hard to get into it but once you 'get' how it works, it's really easy to use successfully. 
-- Fernando Medero because his code showed it's possible to integrate CanFestival with LinuxCNC
+- The CanFestival team for creating it, it's really hard to get into and has a ton of traps spread around, but once you 'get' how it works, it's really easy to use successfully (code is very basic). Maybe a more up-to-date version would be a good idea.
+- Fernando Medero because his code showed it's possible to integrate CanFestival with LinuxCNC. Otherwise wouldn't have attempted it.
 - The Machinekit team for enabling the use of Xenomai (The previous attempt to make RTAI behave with CanFestival and socket CAN was an absolute failure, leading to the move to Machinekit/Xenomai)
-
