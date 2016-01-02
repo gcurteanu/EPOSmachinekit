@@ -4,7 +4,7 @@
 #include <time.h>
 #include "ds302.h"
 
-#define DS302_DEBUG(...)    MSG_DBG(__VA_ARGS__)
+#define DS302_DEBUG(...)    EPOS_DBG(__VA_ARGS__)
 
 // gets the clock in microsecs
 uint64_t rtuClock()

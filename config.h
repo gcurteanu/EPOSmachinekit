@@ -14,14 +14,14 @@ Configuration defines
 #endif
 
 #ifdef __DEBUG__
-#define MSG_DBG(...)    eprintf(__VA_ARGS__)
+#define EPOS_DBG(...)    eprintf(__VA_ARGS__)
 #else
-#define MSG_DBG(...)
+#define EPOS_DBG(...)
 #endif
 
-#define MSG_WARN(...)   eprintf(__VA_ARGS__)
+#define EPOS_WARN(...)   eprintf(__VA_ARGS__)
 
-#define MSG_ERR(...)    eprintf(__VA_ARGS__)
+#define EPOS_ERR(...)    eprintf(__VA_ARGS__)
 
 /*
     Bit routines
