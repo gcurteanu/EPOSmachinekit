@@ -284,7 +284,6 @@ EXTRA_SETUP()
     // Init DS302 process
     ds302_init (&EPOScontrol_Data);
 
-    boot_complete = 0;
     // kickoff DS302 boot process
     EnterMutex();
     ds302_start (&EPOScontrol_Data);
