@@ -40,12 +40,21 @@ char *dcf = NULL;
 RTAPI_MP_STRING(dcf, "The DCF initialisation data");
 
 typedef struct {
-    hal_u32_t   slavecount;
-    hal_u32_t   slave_id[EPOS_MAX_DRIVES];
-    hal_float_t position_scale[EPOS_MAX_DRIVES];
-    hal_float_t *position_command[EPOS_MAX_DRIVES];
-    hal_float_t *position_feedback[EPOS_MAX_DRIVES];
-    hal_s32_t   *position_counts[EPOS_MAX_DRIVES];
+    // params
+    hal_u32_t   slavecount;                             // slave count, out
+    hal_u32_t   slave_id[EPOS_MAX_DRIVES];              // slave ID, out
+    hal_float_t position_scale[EPOS_MAX_DRIVES];        // position scale, in
+    // pins
+    hal_bit_t   *enable[EPOS_MAX_DRIVES];               // enable, input
+    hal_bit_t   *faulted[EPOS_MAX_DRIVES];              // fault, out
+    hal_float_t *position_command[EPOS_MAX_DRIVES];     // position command, input
+    hal_float_t *velocity_command[EPOS_MAX_DRIVES];     // velocity command, input
+    hal_float_t *position_feedback[EPOS_MAX_DRIVES];    // position feedback, output
+    hal_float_t *velocity_feedback[EPOS_MAX_DRIVES];    // velocity feedback, output
+    hal_s32_t   *position_counts[EPOS_MAX_DRIVES];      // position counts, output
+    
+    // internal data
+    hal_bit_t   prev_enabled[EPOS_MAX_DRIVES];          // previous enabled state for edge detect
 } canmanager_t;
 
 static canmanager_t *canmanager;
@@ -126,6 +135,65 @@ void Exit(CO_Data* d, UNS32 id)
     setState(&EPOScontrol_Data, Stopped);
 }
 
+int     setup_pins (const char *prefix) {
+    
+    int     retcode;
+    
+    // the slave count is per instance
+    retcode = hal_param_u32_newf (HAL_RO, &canmanager->slavecount, comp_id,
+        "%s.slave-count", prefix);
+    if (retcode != 0) { return retcode; }
+    
+    for (i = 0; i < canmanager->slavecount; i++) {
+
+        // the state pins, enable and faulted
+        retcode = hal_pin_bit_newf(HAL_IN, &canmanager->enable[i], comp_id,
+        "%s.%d.enable", prefix, i);
+        if (retcode != 0) { return retcode; }
+
+        retcode = hal_pin_bit_newf(HAL_OUT, &canmanager->faulted[i], comp_id,
+        "%s.%d.faulted", prefix, i);
+        if (retcode != 0) { return retcode; }
+        
+        // raw encoder count
+        retcode = hal_pin_s32_newf(HAL_OUT, &canmanager->position_counts[i], comp_id,
+        "%s.%d.counts", prefix, i);
+        if (retcode != 0) { return retcode; }
+
+        // position command and feedback in units
+        retcode = hal_pin_float_newf(HAL_IN, &canmanager->position_command[i], comp_id,
+        "%s.%d.position-cmd", prefix, i);
+        if (retcode != 0) { return retcode; }
+
+        retcode = hal_pin_float_newf(HAL_OUT, &canmanager->position_feedback[i], comp_id,  
+        "%s.%d.position-fb", prefix, i);
+        if (retcode != 0) { return retcode; }
+
+        // velocity command and feedback in units
+        retcode = hal_pin_float_newf(HAL_IN, &canmanager->velocity_command[i], comp_id,
+        "%s.%d.velocity-cmd", prefix, i);
+        if (retcode != 0) { return retcode; }
+
+        retcode = hal_pin_float_newf(HAL_OUT, &canmanager->velocity_feedback[i], comp_id,  
+        "%s.%d.velocity-fb", prefix, i);
+        if (retcode != 0) { return retcode; }
+
+        // params
+        retcode = hal_param_u32_newf (HAL_RO, &canmanager->slave_id[i], comp_id,
+        "%s.%d.slave-id", prefix, i);
+        if (retcode != 0) { return retcode; }
+
+        retcode = hal_param_float_newf (HAL_RW, &canmanager->position_scale[i], comp_id,
+        "%s.%d.position-scale", prefix, i);
+        if (retcode != 0) { return retcode; }
+
+        // setup default values
+        canmanager->position_scale[i] = 1;
+        canmanager->prev_enabled[i] = 0;
+    }
+
+    return 0;
+}
 
 EXTRA_SETUP()
 {
@@ -145,43 +213,15 @@ EXTRA_SETUP()
             canmanager->slave_id[canmanager->slavecount++] = slaveid[i];
         }
 
-    int     retcode;
-
-    retcode = hal_param_u32_newf (HAL_RO, &canmanager->slavecount, comp_id,
-        "%s.slave-count", prefix);
-    if (retcode != 0) { return retcode; }
 
     // comp_id = already set
     // prefix = the component prefix
     rtapi_print ("Component ID is %d\n", comp_id);
 
     // create the pins
-
-    for (i = 0; i < canmanager->slavecount; i++) {
-        int retcode;
-
-        retcode = hal_pin_float_newf(HAL_IN, &canmanager->position_command[i], comp_id,
-        "%s.%d.position-cmd", prefix, i);
-        if (retcode != 0) { return retcode; }
-
-        retcode = hal_pin_s32_newf(HAL_OUT, &canmanager->position_counts[i], comp_id,
-        "%s.%d.counts", prefix, i);
-        if (retcode != 0) { return retcode; }
-
-        retcode = hal_pin_float_newf(HAL_OUT, &canmanager->position_feedback[i], comp_id,  
-        "%s.%d.position-fb", prefix, i);
-        if (retcode != 0) { return retcode; }
-
-        retcode = hal_param_u32_newf (HAL_RO, &canmanager->slave_id[i], comp_id,
-        "%s.%d.slave-id", prefix, i);
-        if (retcode != 0) { return retcode; }
-
-        retcode = hal_param_float_newf (HAL_RW, &canmanager->position_scale[i], comp_id,
-        "%s.%d.position-scale", prefix, i);
-        if (retcode != 0) { return retcode; }
-
-        canmanager->position_scale[i] = 1;
-    }
+    int retcode = setup_pins(prefix);
+    if (retcode != 0)
+        return retcode;
 
     rtapi_print ("CANmanager: Load libpthread_rt.so\n");
     pthread_lib_handle = dlopen ("libpthread_rt.so", RTLD_NOW | RTLD_GLOBAL);
@@ -243,6 +283,7 @@ EXTRA_SETUP()
     // Init DS302 process
     ds302_init (&EPOScontrol_Data);
 
+    boot_complete = 0;
     // kickoff DS302 boot process
     EnterMutex();
     ds302_start (&EPOScontrol_Data);
@@ -292,23 +333,19 @@ EXTRA_CLEANUP()
     rtapi_print ("CANmanager: stopped and unloaded\n");
 }
 
-int         boot_done = 0;
-int         init_done = 0;
-INTEGER32   current_position_command = 0;
-
 FUNCTION(update) 
 {
     int     i;
     //rtapi_print ("update called\n");
 
     // do drive startup after the manager completed boot
-    if (boot_done == 0 && ds302_status(&EPOScontrol_Data) == BootCompleted) {
-            boot_done = 1;
-
+    // this should fire only once, as boot completes
+    if (boot_complete == 0 && ds302_status(&EPOScontrol_Data) == BootCompleted) {
             // set the boot complete param
             boot_complete = 1;
 
-            rtapi_print ("CANmanager: Initialising drives\n");
+            // this probably will have to rely on module params/config?
+            rtapi_print ("CANmanager: Setting drive params\n");
             EnterMutex();
             
             for (i = 0; i < canmanager->slavecount; i++) {
@@ -326,21 +363,57 @@ FUNCTION(update)
                 epos_execute (i);
 
                 // enable the drive
-                epos_enable_drive (i);
+                // epos_enable_drive (i);   // we now control the enable via the enable pin
             }
 
             // load values to the drive via PDO (note, above routines are LOCAL)
             sendPDOevent(&EPOScontrol_Data);
-
             LeaveMutex();
+            
     } else if (ds302_status(&EPOScontrol_Data) != BootCompleted) {
         // boot is still in progress / not done
         // let's update the boot status for each system
     }
 
+    /*
+     * This is the main processing section
+     * It does enable/fault
+     * It processes the commands and provides the results
+     *
+     * NOTE: all WRITE calls to the CAN stack MUST use mutexes (EnterMutex/LeaveMutex)
+     * NOTE: for READ calls to the CAN stack, we should be fine without mutexes (if calls short)
+     *
+     */
+    
+    // one optimization idea: after the loop is done, do a SINGLE call to sendPDO
+    // this will reduce the amount of locking/unlocking
+    
     for (i = 0; i < canmanager->slavecount ; i++) {
 
-        // if we're operational, then do work
+        // enable section.
+        // the fault recovery is actually a SM (clearfault, wait to get to disabled, then enable)
+        // if it doesn't get to disabled after fault recovery in a specific time (Nms) signal fault?
+        // this needs more thinking
+        if (*(canmanager->enable[i]) != canmanager->prev_enabled[i]) {
+            // we have an edge in the enabled state
+            if (*(canmanager->enable[i]) != 0) {
+                // we should ENABLE the drive. Send the PDO ASAP
+                //EnterMutex();
+                epos_enable_drive (i);
+                //sendPDOevent(&EPOScontrol_Data);
+                //LeaveMutex();
+            } else {
+                // we should DISABLE the drive. Send the PDO ASAP
+                //EnterMutex();
+                epos_disable_drive (i);
+                //sendPDOevent(&EPOScontrol_Data);
+                //LeaveMutex();
+            }
+            // save the value
+            canmanager->prev_enabled[i] = *(canmanager->enable[i]);
+        }
+        
+        // position / speed handling
         if (epos_drive_operational(i)) {
 
             // calculate target position
@@ -350,9 +423,9 @@ FUNCTION(update)
                 // new move required
                 // rtapi_print ("CANmanager: Executing move to %ld from %ld [%d]\n", demandpos, PositionDemandValue[i], i);
 
-                EnterMutex();
+                //EnterMutex();
                 epos_do_move_PPM(i, demandpos);
-                LeaveMutex();
+                //LeaveMutex();
                 // if the move succeeds, it will update the PositionDemandValue with the param value
                 // this way, we'll re-execute the move automatically if for whatever reason was not executed
             }
@@ -364,4 +437,9 @@ FUNCTION(update)
             *(canmanager->position_feedback[i]) = *(canmanager->position_counts[i]) / canmanager->position_scale[i];
         }
     }
+    
+    // generate the PDOs. This is the ONLY lock needed
+    EnterMutex();
+    sendPDOevent(&EPOScontrol_Data);
+    LeaveMutex();
 }

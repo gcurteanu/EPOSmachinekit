@@ -745,8 +745,13 @@ int     epos_do_move_PPM (int idx, INTEGER32 position) {
         PositionDemandValue[idx] = position;
         // set the bit for the control word
         SET_BIT(ControlWord[idx],4);
+        /*
+         * disabled the PDO sending here, we need to rely on the higher level caller
+         * to determine WHEN we need to send the PDOs
+         */
         // send the PDO for the MOVE (observing the mapping)
-        sendPDOevent(EPOS_drive.d);
+        //sendPDOevent(EPOS_drive.d);
+        // other possibility is to send just the PDO nr 1 for the index
         //sendOnePDOevent(EPOS_drive.d, 1 + (idx * EPOS_PDO_MAX));
         return 1;
     }
