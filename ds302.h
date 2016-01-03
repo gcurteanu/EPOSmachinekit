@@ -288,6 +288,10 @@ int     ds302_add_error (UNS8, UNS16, UNS8, const UNS8*);
 */
 void    ds302_clear_errors (UNS8);
 /*
+    gets the error count for a node
+*/
+int     ds302_get_error_count (UNS8);
+/*
     checks the node health (NMT,Boot,errors)
     node healthy nodeid
 */
@@ -299,5 +303,10 @@ int     ds302_get_next_dcf (UNS8 *data, UNS32 *cursor, UNS16 *idx, UNS8 *subidx,
 int     ds302_load_dcf_local (CO_Data*);
 /* set the HB for a node */
 int     ds302_setHeartbeat (CO_Data*, UNS8 nodeid, UNS16 heartbeat);
+
+
+// additional helper functions
+
+const char *ds301_nmt_to_text (e_nodeState);
 
 #endif

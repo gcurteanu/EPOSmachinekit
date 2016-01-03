@@ -1693,6 +1693,7 @@ void    _onSlaveBootCB (CO_Data* d, UNS8 nodeid) {
         if (ds302_bitcheck_32(d, 0x1F81, nodeid, DS302_NL_ONBOOT_START_SLAVE) == 1) {
             // boot the node
             EPOS_WARN ("Booting/configuring CAN ID %02x\n", nodeid);
+            ds302_clear_errors (nodeid);
             ds302_boot_slave (d, nodeid);
         } else {
             EPOS_WARN ("Automatic boot for CAN ID %02x disabled (0x1F81/%02x, bit 2 is off)\n", nodeid, nodeid);
@@ -1802,4 +1803,34 @@ int     ds302_node_healthy (CO_Data* d, UNS8 nodeid) {
         return 0;
         
     return 1;
+}
+
+
+/*
+ NMT state to text
+*/
+
+const char *ds301_nmt_to_text (e_nodeState state) {
+    
+    switch(state) {
+        case Initialisation:
+            return "Initialisation";
+        case Disconnected:
+            return "Disconnected";
+        case Connecting:
+            return "Connecting";
+        //case Preparing:
+        //    return "Preparing";
+        case Stopped:
+            return "Stopped";
+        case Operational:
+            return "Operational";
+        case Pre_operational:
+            return "PreOperational";
+        case Unknown_state:
+        default:
+            return "Unknown";
+    }
+
+    return "Unknown";
 }
