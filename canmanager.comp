@@ -138,6 +138,7 @@ void Exit(CO_Data* d, UNS32 id)
 int     setup_pins (const char *prefix) {
     
     int     retcode;
+    int     i;
     
     // the slave count is per instance
     retcode = hal_param_u32_newf (HAL_RO, &canmanager->slavecount, comp_id,
