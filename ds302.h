@@ -233,12 +233,25 @@ DECLARE_SM_TYPE(BOOTSLAVE, _sm_BootSlave_States, SDOCallback_t, _bootSlave_data_
 */
 
 typedef struct {
+    UNS16   errCode;
+    UNS8    errReg;
+    UNS8    errData[5];
+} emcy_frame_t;
+
+typedef struct {
+    emcy_frame_t    errors[EPOS_MAX_ERRORS];
+    int             errCount;
+} device_errors_t;
+
+typedef struct {
         ds302_boot_state_t      bootState;                                  // DS-302 overall boot state
         
         DECLARE_SM (BOOTSLAVE, _bootSlave[NMT_MAX_NODE_ID]);                // boot slave machines
         DECLARE_SM (BOOTMASTER, _masterBoot);                               // master boot machine
         
-        SDOCallback_t           bootFinished;
+        SDOCallback_t           bootFinished;                               // boot finished callback
+        
+        device_errors_t         deviceErrors[NMT_MAX_NODE_ID];              // the error stack
 } ds302_t;
 
 extern ds302_t     ds302_data;
@@ -262,6 +275,14 @@ ds302_boot_state_t  ds302_node_status (CO_Data*, UNS8);
 _sm_BootSlave_Codes ds302_node_result (CO_Data*, UNS8);
 /* Gets a slave's CAN error */
 UNS32   ds302_node_error (CO_Data*, UNS8);
+
+/* EMCY error handling routines */
+/* 
+    add error nodeid, error code, error register, error data[5]
+    returns 1 on success, 0 on failure
+*/
+int     ds302_add_error (UNS8, UNS16, UNS8, UNS8*);
+
 
 /* DCF data defines/routines */
 int     ds302_get_next_dcf (UNS8 *data, UNS32 *cursor, UNS16 *idx, UNS8 *subidx, UNS32 *size, UNS32 *value);

@@ -1710,4 +1710,91 @@ void    _onEMCY(CO_Data* d, UNS8 nodeid, UNS16 errCode, UNS8 errReg, const UNS8*
     // For now just print the EMCY frame
     
     EPOS_WARN ("received EMCY from CAN ID %02x : errCode=%04x, errReg=%02x\n", nodeid, errCode, errReg);
+    
+    // check here for 0x0000 error code and 0x00 error register
+    if (errCode == 0x0000 && errReg == 0x00) {
+        // no errors present on the device
+        ds302_clear_errors (nodeid);
+    } else if (!ds302_add_error (nodeid, errCode, errReg, errSpec)) {
+        EPOS_WARN ("error stack for %02x is full\n", nodeid);
+    }
+}
+
+/*
+    Clears the errors for a specific node
+    Called either from the init, or from EMCY when no errors
+*/
+void    ds302_clear_errors (UNS8 nodeid) {
+    
+    if (nodeid > 0 && nodeid < NMT_MAX_NODE_ID) {
+        ds302_data.deviceErrors[nodeid].errCount = 0;
+    }
+}
+
+/*
+    Add an error to the error stack
+    Called from the emcy OR we can add a error manually from the software
+*/
+int     ds302_add_error (UNS8 nodeid, UNS16 errCode, UNS8 errReg, UNS8* errSpec) {
+    
+    /* check if we have room in the stack. Errors are DISCARDED if not */
+    if (nodeid > 0 && nodeid < NMT_MAX_NODE_ID && ds302_data.deviceErrors[nodeid].errCount < EPOS_MAX_ERRORS) {
+
+        ds302_data.deviceErrors[nodeid].errors[ds302_data.deviceErrors[nodeid].errCount].errCode = errCode;
+        ds302_data.deviceErrors[nodeid].errors[ds302_data.deviceErrors[nodeid].errCount].errReg = errReg;
+        if (errSpec != NULL) {
+            int     i;
+            for (i = 0; i < 5; i++){
+                ds302_data.deviceErrors[nodeid].errors[ds302_data.deviceErrors[nodeid].errCount].errData[i] = errSpec[i];
+            }
+        } else { // clear the data just to make sure
+            int     i;
+            for (i = 0; i < 5; i++){
+                ds302_data.deviceErrors[nodeid].errors[ds302_data.deviceErrors[nodeid].errCount].errData[i] = 0;
+            }            
+        }
+        // error added, increment
+        ds302_data.deviceErrors[nodeid].errCount++;
+        return 1;
+    }
+    
+    return 0;
+}
+
+/* returns the error count for a device */
+int     ds302_get_error_count (UNS8 nodeid) {
+    
+    if (nodeid > 0 && nodeid < NMT_MAX_NODE_ID) {
+        return ds302_data.deviceErrors[nodeid].errCount;
+    }
+    
+    return -1;
+}
+
+/*
+ * Name         : ds302_node_healthy
+ *
+ * Synopsis     : int     ds302_node_healthy (UNS8 nodeid)
+ *
+ * Arguments    : UNS8  nodeid : 
+ *
+ * Description  : This verifies the node is operational in NMT, 
+ *                  boot completed and no errors in boot,
+ *                  and no errors in stack
+ * 
+ * Returns      : int (1 ok, 0 not ok)
+ */
+
+int     ds302_node_healthy (CO_Data* d, UNS8 nodeid) {
+    
+    if (getNodeState(d, nodeid) != Operational)
+        return 0;
+    
+    if (ds302_node_result (d, nodeid) != SM_OK)
+        return 0;
+    
+    if (ds302_get_error_count (nodeid) > 0)
+        return 0;
+        
+    return 1;
 }
