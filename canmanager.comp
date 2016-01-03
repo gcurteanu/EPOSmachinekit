@@ -39,6 +39,47 @@ RTAPI_MP_INT(master_can_id,"The master's CAN ID");
 char *dcf = NULL;
 RTAPI_MP_STRING(dcf, "The DCF initialisation data");
 
+typedef enum {
+    Disabled        = 0x00, // default state. External/Internal
+    ExtFaulted      = 0x01, // External Fault (CAN/device)
+    IntFaulted      = 0x02, // Internal Fault (component)
+    Enabled         = 0x03, // External/Internal
+    Disabling       = 0x10, // Internal
+    ExtFaultRecovery= 0x11, // External
+    IntFaultRecovery= 0x12, // Internal
+    Enabling        = 0x13, // Internal
+} enstate_t;
+
+/* 
+ * The state translation table, based on previous state and detected current state
+ * This is using in enable/disable/fault clearing/fault detection of the drives
+ */
+enstate_t   state_matrix[16][3] = {
+// current state, detected state, new state
+{Disabled,          ExtFaulted,     ExtFaulted},
+{Disabled,          Enabled,        IntFaulted},
+{ExtFaulted,        Disabled,       Disabled},
+{ExtFaulted,        Enabled,        Enabled},
+{IntFaulted,        ExtFaulted,     ExtFaulted},
+{ExtFaultRecovery,  Disabled,       Disabled},
+{ExtFaultRecovery,  Enabled,        Enabled},
+{IntFaultRecovery,  Disabled,       Disabled},
+{IntFaultRecovery,  ExtFaulted,     ExtFaulted},
+{IntFaultRecovery,  Enabled,        Enabled},
+{Enabled,           Disabled,       IntFaulted},
+{Enabled,           ExtFaulted,     ExtFaulted},
+{Enabling,          ExtFaulted,     ExtFaulted},
+{Enabling,          Enabled,        Enabled},
+{Disabling,         Disabled,       Disabled},
+{Disabling,         ExtFaulted,     ExtFaulted},
+};
+
+typedef enum {
+    Level   = 0x00, // default state
+    Rising  = 0x01,
+    Falling = 0x02,
+} edge_t;
+
 typedef struct {
     // params
     hal_u32_t   slavecount;                             // slave count, out
@@ -55,6 +96,9 @@ typedef struct {
     
     // internal data
     hal_bit_t   prev_enabled[EPOS_MAX_DRIVES];          // previous enabled state for edge detect
+    edge_t      enable_edges[EPOS_MAX_DRIVES];          // edge detector for enable
+    enstate_t   currentstate[EPOS_MAX_DRIVES];          // the drive state, used to control enable/disable and fault control
+    uint64_t    laststatechange[EPOS_MAX_DRIVES];       // last time the state was changed           
 } canmanager_t;
 
 static canmanager_t *canmanager;
@@ -296,7 +340,12 @@ EXTRA_SETUP()
             ds302_setHeartbeat (&EPOScontrol_Data, canmanager->slave_id[i], heartbeat[i]);
         }
     }
-        
+
+    // set the inital drive states
+    for (i = 0; i < canmanager->slavecount; i++) {
+        canmanager->currentstate[i] = Disabled;
+    } 
+
     rtapi_print("CANmanager: finished initialization.\n");
 
     return 0;
@@ -333,10 +382,128 @@ EXTRA_CLEANUP()
     rtapi_print ("CANmanager: stopped and unloaded\n");
 }
 
+/*
+    Edge detector for enable signals
+*/
+void    edge_detect () {
+
+    int     i;
+    for (i = 0; i < canmanager->slavecount ; i++) {
+        if (*(canmanager->enable[i]) != canmanager->prev_enabled[i]) {
+            if (*(canmanager->enable[i]) == 0)
+                canmanager->enable_edges[i] = Falling;
+            else
+                canmanager->enable_edges[i] = Rising;
+        } else
+            canmanager->enable_edges[i] = Level;
+
+        canmanager->prev_enabled[i] = *(canmanager->enable[i]);
+    }
+}
+
+/*
+    This does the state transitions for the drive
+*/
+void    update_states (int idx) {
+
+    enstate_t   nodestate = Disabled;
+    // gather the current state
+    if (ds302_node_healthy(&EPOScontrol_Data, canmanager->slave_id[idx])) {
+        // node is ok at 302 level (NMT, boot, errors)
+        if (epos_drive_operational(idx))
+            nodestate = Enabled;
+        else if (epos_drive_faulted(idx))
+            nodestate = ExtFaulted;
+    } else
+        nodestate = ExtFaulted;
+
+    // we have the current state (Disabled/Enabled/Faulted). Compare against previous and take action
+
+    // do the state changes if needed
+    int     i;
+    for (i = 0; i < 16; i++) {
+        if (canmanager->currentstate[idx] == state_matrix[i][0] && nodestate == state_matrix[i][1]) {
+            EPOS_WARN ("Internal state change from %d to %d (node %d)\n", canmanager->currentstate[idx], state_matrix[i][2], idx);
+            canmanager->currentstate[idx] = state_matrix[i][2];
+        }
+    }
+}
+
+void    set_enable_state (int idx) {
+
+    // this checks the current state and the enable signal to take the proper actions
+    // at this point we have all the possible states in the current state
+
+    // it's good in the current state based on level?
+    if (canmanager->currentstate[idx] == Enabled && *(canmanager->enable[idx]) != 0)
+        return;
+    if (canmanager->currentstate[idx] == Disabled && *(canmanager->enable[idx]) == 0)
+        return;
+
+    // we need to do something to go to the proper state
+    // from Disabled to Enabled
+    // from Enabled to Disabled
+    // from Faulted to FaultRecovery (if needed)
+
+    switch (canmanager->currentstate[idx]) {
+        case Disabled:
+            // start the node regardless of edge
+            EPOS_WARN("enabling drive %d\n", idx);
+            epos_enable_drive (idx);
+            canmanager->currentstate[idx] = Enabling;
+            break;
+        case Enabled:
+            // disable the node regardless of edge
+            EPOS_WARN("disabling drive %d\n", idx);
+            epos_disable_drive (idx);
+            canmanager->currentstate[idx] = Disabling;
+            break;
+        case ExtFaulted:
+            // do fault recovery on a rising edge
+            if(canmanager->enable_edges[idx] == Rising) {
+                EPOS_WARN("fault recovery for %d\n", idx);
+                epos_fault_reset (idx);
+                canmanager->currentstate[idx] = ExtFaultRecovery;
+            }
+            break;
+        case IntFaulted:
+            // do fault recovery on a rising edge
+            if(canmanager->enable_edges[idx] == Rising) {
+                EPOS_WARN("fault recovery for %d\n", idx);
+                canmanager->currentstate[idx] = IntFaultRecovery;
+            }
+            break; 
+        case Enabling:
+            // do a stop on a falling edge
+            if(canmanager->enable_edges[idx] == Falling) {
+                EPOS_WARN("disabling an enabling drive %d\n", idx);
+                epos_disable_drive (idx);
+                canmanager->currentstate[idx] = Disabling;
+            }
+            break;
+        case Disabling:
+            // do a start on a rising edge
+            if(canmanager->enable_edges[idx] == Rising) {
+                EPOS_WARN("enabling an disabling drive %d\n", idx);
+                epos_enable_drive (idx);
+                canmanager->currentstate[idx] = Enabling;
+            }
+            break;
+    }
+
+    // set the fault signal
+    if (canmanager->currentstate[idx] == ExtFaulted || canmanager->currentstate[idx] == IntFaulted)
+        *(canmanager->faulted[idx]) = 1;
+    else
+        *(canmanager->faulted[idx]) = 0;
+}
+
 FUNCTION(update) 
 {
     int     i;
     //rtapi_print ("update called\n");
+
+    edge_detect();
 
     // do drive startup after the manager completed boot
     // this should fire only once, as boot completes
@@ -387,34 +554,19 @@ FUNCTION(update)
     
     // one optimization idea: after the loop is done, do a SINGLE call to sendPDO
     // this will reduce the amount of locking/unlocking
+
+    // drive state / fault detection & recovery
+    for (i = 0; i < canmanager->slavecount ; i++) {
+        update_states (i);
+        set_enable_state (i);
+    }
     
     for (i = 0; i < canmanager->slavecount ; i++) {
 
-        // enable section.
-        // the fault recovery is actually a SM (clearfault, wait to get to disabled, then enable)
-        // if it doesn't get to disabled after fault recovery in a specific time (Nms) signal fault?
-        // this needs more thinking
-        if (*(canmanager->enable[i]) != canmanager->prev_enabled[i]) {
-            // we have an edge in the enabled state
-            if (*(canmanager->enable[i]) != 0) {
-                // we should ENABLE the drive. Send the PDO ASAP
-                //EnterMutex();
-                epos_enable_drive (i);
-                //sendPDOevent(&EPOScontrol_Data);
-                //LeaveMutex();
-            } else {
-                // we should DISABLE the drive. Send the PDO ASAP
-                //EnterMutex();
-                epos_disable_drive (i);
-                //sendPDOevent(&EPOScontrol_Data);
-                //LeaveMutex();
-            }
-            // save the value
-            canmanager->prev_enabled[i] = *(canmanager->enable[i]);
-        }
-        
         // position / speed handling
-        if (epos_drive_operational(i)) {
+        // only do this when the current state is Enabled
+        // do not send updates to disabled drives
+        if (canmanager->currentstate[i] == Enabled) {
 
             // calculate target position
             hal_s32_t   demandpos = (hal_s32_t)(*(canmanager->position_command[i]) * canmanager->position_scale[i]);

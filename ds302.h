@@ -281,8 +281,17 @@ UNS32   ds302_node_error (CO_Data*, UNS8);
     add error nodeid, error code, error register, error data[5]
     returns 1 on success, 0 on failure
 */
-int     ds302_add_error (UNS8, UNS16, UNS8, UNS8*);
-
+int     ds302_add_error (UNS8, UNS16, UNS8, const UNS8*);
+/*
+    clears the errors for a node
+    clear errors nodeid
+*/
+void    ds302_clear_errors (UNS8);
+/*
+    checks the node health (NMT,Boot,errors)
+    node healthy nodeid
+*/
+int     ds302_node_healthy (CO_Data*, UNS8);
 
 /* DCF data defines/routines */
 int     ds302_get_next_dcf (UNS8 *data, UNS32 *cursor, UNS16 *idx, UNS8 *subidx, UNS32 *size, UNS32 *value);

@@ -1692,8 +1692,13 @@ void    _onSlaveBootCB (CO_Data* d, UNS8 nodeid) {
         // verify if slave boot allowed
         if (ds302_bitcheck_32(d, 0x1F81, nodeid, DS302_NL_ONBOOT_START_SLAVE) == 1) {
             // boot the node
+            EPOS_WARN ("Booting/configuring CAN ID %02x\n", nodeid);
             ds302_boot_slave (d, nodeid);
+        } else {
+            EPOS_WARN ("Automatic boot for CAN ID %02x disabled (0x1F81/%02x, bit 2 is off)\n", nodeid, nodeid);
         }
+    } else {
+        EPOS_WARN("CAN ID %02x is not in the network list, ignoring\n", nodeid);
     }
 }
 
@@ -1735,7 +1740,7 @@ void    ds302_clear_errors (UNS8 nodeid) {
     Add an error to the error stack
     Called from the emcy OR we can add a error manually from the software
 */
-int     ds302_add_error (UNS8 nodeid, UNS16 errCode, UNS8 errReg, UNS8* errSpec) {
+int     ds302_add_error (UNS8 nodeid, UNS16 errCode, UNS8 errReg, const UNS8* errSpec) {
     
     /* check if we have room in the stack. Errors are DISCARDED if not */
     if (nodeid > 0 && nodeid < NMT_MAX_NODE_ID && ds302_data.deviceErrors[nodeid].errCount < EPOS_MAX_ERRORS) {
