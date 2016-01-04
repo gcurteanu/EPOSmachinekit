@@ -106,6 +106,7 @@ typedef struct {
     // pins
     hal_bit_t   *enable[EPOS_MAX_DRIVES];               // enable, input
     hal_bit_t   *faulted[EPOS_MAX_DRIVES];              // fault, out
+    hal_s32_t   *command_mode[EPOS_MAX_DRIVES];         // mode of operation, input
     hal_float_t *position_command[EPOS_MAX_DRIVES];     // position command, input
     hal_float_t *velocity_command[EPOS_MAX_DRIVES];     // velocity command, input
     hal_float_t *position_feedback[EPOS_MAX_DRIVES];    // position feedback, output
@@ -224,6 +225,11 @@ int     setup_pins (const char *prefix) {
         "%s.%d.faulted", prefix, i);
         if (retcode != 0) { return retcode; }
         
+        // command mode
+        retcode = hal_pin_s32_newf(HAL_IN, &canmanager->command_mode[i], comp_id,
+        "%s.%d.command-mode", prefix, i);
+        if (retcode != 0) { return retcode; }
+
         // raw encoder count
         retcode = hal_pin_s32_newf(HAL_OUT, &canmanager->position_counts[i], comp_id,
         "%s.%d.counts", prefix, i);
@@ -654,23 +660,54 @@ FUNCTION(update)
         // do not send updates to disabled drives
         if (canmanager->currentstate[i] == Enabled) {
 
-            // calculate target position
-            hal_s32_t   demandpos = (hal_s32_t)(*(canmanager->position_command[i]) * canmanager->position_scale[i]);
-            // do motion (we can base comparison on the OD object directly)
-            if (demandpos != PositionDemandValue[i]) {
-                // new move required
-                // rtapi_print ("CANmanager: Executing move to %ld from %ld [%d]\n", demandpos, PositionDemandValue[i], i);
+            switch (*(canmanager->command_mode[i])) {
 
-                //EnterMutex();
-                epos_do_move_PPM(i, demandpos);
-                //LeaveMutex();
-                // if the move succeeds, it will update the PositionDemandValue with the param value
-                // this way, we'll re-execute the move automatically if for whatever reason was not executed
+                case EPOS_MODE_PPM: // Profile Position Mode
+                    {
+                        epos_set_mode (i, EPOS_MODE_PPM);
+
+                        // calculate target position
+                        hal_s32_t   demandpos = (hal_s32_t)(*(canmanager->position_command[i]) * canmanager->position_scale[i]);
+                        // do motion (we can base comparison on the OD object directly)
+                        if (demandpos != PositionDemandValue[i]) {
+                            // new move required
+                            // rtapi_print ("CANmanager: Executing move to %ld from %ld [%d]\n", demandpos, PositionDemandValue[i], i);
+
+                            epos_do_move_PPM(i, demandpos);
+                            // if the move succeeds, it will update the PositionDemandValue with the param value
+                            // this way, we'll re-execute the move automatically if for whatever reason was not executed
+                        }
+                    }; break;
+
+                case EPOS_MODE_PVM: // Profile Velocity Mode
+                    {
+                        epos_set_mode (i, EPOS_MODE_PVM);
+
+                    }; break;
+
+                case EPOS_MODE_POS: // Direct Position Mode
+                    {
+                        epos_set_mode (i, EPOS_MODE_POS);
+
+                        // set target position
+                        PositionDemandValue[i] = (INTEGER32)(*(canmanager->position_command[i]) * canmanager->position_scale[i]);
+
+                    }; break;
+
+                case EPOS_MODE_VEL: // Direct Velocity Mode
+                    {
+                        epos_set_mode (i, EPOS_MODE_VEL);
+
+                    }; break;
+
+                default:
+                    // invalid mode, raise error & fault
+                    rtapi_print_msg (RTAPI_MSG_ERR, "Invalid command mode %ld", *(canmanager->command_mode[i]));
+                    canmanager->currentstate[i] = IntFaulted;
+                    canmanager->laststatechange[i] = rtuClock();
             }
-
             // load the feedback value
             *(canmanager->position_counts[i]) = PositionActualValue[i];
-
             // calculate position in units
             *(canmanager->position_feedback[i]) = *(canmanager->position_counts[i]) / canmanager->position_scale[i];
         }
