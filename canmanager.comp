@@ -301,14 +301,14 @@ EXTRA_SETUP()
     //rtapi_print ("CANmanager: Load libpthread_rt.so\n");
     pthread_lib_handle = dlopen ("libpthread_rt.so", RTLD_NOW | RTLD_GLOBAL);
     if (!pthread_lib_handle) {
-        //rtapi_print ("CANmanager: pthread_rt load failed\n");
+        rtapi_print ("CANmanager: pthread_rt load failed\n");
         return 1;
     }
 
     //rtapi_print ("CANmanager: Loading librtdm.so\n");
     rtdm_lib_handle = dlopen ("/usr/lib/librtdm.so", RTLD_NOW | RTLD_GLOBAL);
     if (!rtdm_lib_handle) {
-        //rtapi_print ("CANmanager: RTDM load failed\n");
+        rtapi_print ("CANmanager: RTDM load failed\n");
         return 1;
     }
 
@@ -319,10 +319,10 @@ EXTRA_SETUP()
     LoadCanDriver(LibraryPath);
                 
     if(!canOpen(&MasterBoard,&EPOScontrol_Data)){
-        //rtapi_print("CANmanager: Cannot open Master Board\n");
+        rtapi_print("CANmanager: Cannot open CAN board\n");
     }
     else{
-        //rtapi_print("CANmanager: Opened Master Board\n");
+        //rtapi_print("CANmanager: Opened CAN board\n");
     }
 
     // Set the master ID
@@ -387,13 +387,19 @@ EXTRA_SETUP()
 
 EXTRA_CLEANUP()
 {
-    // disable the drive
-    if (epos_drive_operational(0)) {
-        EnterMutex();    
-        epos_disable_drive (0);
-        sendPDOevent(&EPOScontrol_Data);
-        LeaveMutex();
+    int     i;
+
+    // disable the drives
+    for (i = 0; i < canmanager->slavecount ; i++) {
+        // disable the drive
+        if (epos_drive_operational(i)) {
+            epos_disable_drive (i);
+        }
     }
+
+    EnterMutex();
+    sendPDOevent(&EPOScontrol_Data);
+    LeaveMutex();
     
     // put the master into pre-op
     setState (&EPOScontrol_Data, Pre_operational);
@@ -597,12 +603,12 @@ FUNCTION(update)
             EnterMutex();
             
             for (i = 0; i < canmanager->slavecount; i++) {
-                // set operation mode
-                epos_set_mode (i, EPOS_MODE_PPM);
+                // set default operation mode
+                // epos_set_mode (i, EPOS_MODE_PPM);
             
                 // set motion type, segmented or continuous
                 epos_set_continuous (i);
-                //epos_set_segmented(0);
+                //epos_set_segmented(i);
             
                 // set values as absolute
                 epos_set_absolute (i);
