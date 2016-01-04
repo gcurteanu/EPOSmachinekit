@@ -40,7 +40,7 @@ RTAPI_MP_ARRAY_INT(heartbeat,EPOS_MAX_DRIVES,"The heartbeat values for each slav
 int master_can_id = 0x7F;
 RTAPI_MP_INT(master_can_id,"The master's CAN ID");
 char *dcf = NULL;
-RTAPI_MP_STRING(dcf, "The DCF initialisation data");
+RTAPI_MP_STRING(dcf, "The DCF initialisation data file");
 
 typedef enum {
     Disabled        = 0x00, // default state. External/Internal
@@ -52,6 +52,21 @@ typedef enum {
     IntFaultRecovery= 0x12, // Internal
     Enabling        = 0x13, // Internal
 } enstate_t;
+
+static const char * state_to_text (enstate_t state) {
+
+    switch (state) {
+        case Disabled: return "Disabled";
+        case ExtFaulted: return "ExtFaulted";
+        case IntFaulted: return "IntFaulted";
+        case Enabled: return "Enabled";
+        case Disabling: return "Disabling";
+        case ExtFaultRecovery: return "ExtFaultRecovery";
+        case IntFaultRecovery: return "IntFaultRecovery";
+        case Enabling: return "Enabling";
+        default: return "(unknown)";
+    }
+}
 
 /* 
  * The state translation table, based on previous state and detected current state
@@ -270,38 +285,38 @@ EXTRA_SETUP()
 
     // comp_id = already set
     // prefix = the component prefix
-    rtapi_print ("Component ID is %d\n", comp_id);
+    //rtapi_print ("Component ID is %d\n", comp_id);
 
     // create the pins
     int retcode = setup_pins(prefix);
     if (retcode != 0)
         return retcode;
 
-    rtapi_print ("CANmanager: Load libpthread_rt.so\n");
+    //rtapi_print ("CANmanager: Load libpthread_rt.so\n");
     pthread_lib_handle = dlopen ("libpthread_rt.so", RTLD_NOW | RTLD_GLOBAL);
     if (!pthread_lib_handle) {
-        rtapi_print ("CANmanager: pthread_rt load failed\n");
+        //rtapi_print ("CANmanager: pthread_rt load failed\n");
         return 1;
     }
 
-    rtapi_print ("CANmanager: Loading librtdm.so\n");
+    //rtapi_print ("CANmanager: Loading librtdm.so\n");
     rtdm_lib_handle = dlopen ("/usr/lib/librtdm.so", RTLD_NOW | RTLD_GLOBAL);
     if (!rtdm_lib_handle) {
-        rtapi_print ("CANmanager: RTDM load failed\n");
+        //rtapi_print ("CANmanager: RTDM load failed\n");
         return 1;
     }
 
-    rtapi_print ("CANmanager: Timers initialized\n");
+    //rtapi_print ("CANmanager: Timers initialized\n");
     TimerInit();
 
-    rtapi_print ("CANmanager: Loading the driver\n");
+    //rtapi_print ("CANmanager: Loading the driver\n");
     LoadCanDriver(LibraryPath);
                 
     if(!canOpen(&MasterBoard,&EPOScontrol_Data)){
-        rtapi_print("CANmanager: Cannot open Master Board\n");
+        //rtapi_print("CANmanager: Cannot open Master Board\n");
     }
     else{
-        rtapi_print("CANmanager: Opened Master Board\n");
+        //rtapi_print("CANmanager: Opened Master Board\n");
     }
 
     // Set the master ID
@@ -336,6 +351,8 @@ EXTRA_SETUP()
 
     // Init DS302 process
     ds302_init (&EPOScontrol_Data);
+
+    EPOS_WARN("CANmanager: 302 initialized\n");
 
     // kickoff DS302 boot process
     EnterMutex();
@@ -433,7 +450,7 @@ void    update_states (int idx) {
     int     i;
     for (i = 0; i < 16; i++) {
         if (canmanager->currentstate[idx] == state_matrix[i][0] && nodestate == state_matrix[i][1]) {
-            EPOS_WARN ("Internal state change from %d to %d (node %d)\n", canmanager->currentstate[idx], state_matrix[i][2], idx);
+            EPOS_WARN ("Internal state change from %s to %s (node %d)\n", state_to_text(canmanager->currentstate[idx]), state_to_text(state_matrix[i][2]), idx);
             canmanager->currentstate[idx] = state_matrix[i][2];
             // mark the time
             canmanager->laststatechange[idx] = rtuClock();
