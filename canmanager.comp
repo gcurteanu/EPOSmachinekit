@@ -103,6 +103,7 @@ typedef struct {
     hal_u32_t   slavecount;                             // slave count, out
     hal_u32_t   slave_id[EPOS_MAX_DRIVES];              // slave ID, out
     hal_float_t position_scale[EPOS_MAX_DRIVES];        // position scale, in
+    
     // pins
     hal_bit_t   *enable[EPOS_MAX_DRIVES];               // enable, input
     hal_bit_t   *faulted[EPOS_MAX_DRIVES];              // fault, out
@@ -112,6 +113,10 @@ typedef struct {
     hal_float_t *position_feedback[EPOS_MAX_DRIVES];    // position feedback, output
     hal_float_t *velocity_feedback[EPOS_MAX_DRIVES];    // velocity feedback, output
     hal_s32_t   *position_counts[EPOS_MAX_DRIVES];      // position counts, output
+
+    // GPIO
+    hal_bit_t   *digital_in[EPOS_MAX_DRIVES][16];       // digital input pins on the drive
+    hal_bit_t   *digital_out[EPOS_MAX_DRIVES][16];     // digital output pins on the drive
     
     // internal data
     hal_bit_t   prev_enabled[EPOS_MAX_DRIVES];          // previous enabled state for edge detect
@@ -252,6 +257,19 @@ int     setup_pins (const char *prefix) {
         retcode = hal_pin_float_newf(HAL_OUT, &canmanager->velocity_feedback[i], comp_id,  
         "%s.%d.velocity-fb", prefix, i);
         if (retcode != 0) { return retcode; }
+
+        // digital IO
+        // we have declared 16 in and 16 out. However, not all of them are used
+        int pin;
+        for (pin = 0; pin < 16; pin++) {
+            retcode = hal_pin_bit_newf(HAL_IN, &canmanager->digital_out[i][pin], comp_id,
+                "%s.%d.digital-out-%d", prefix, i, pin);
+            if (retcode != 0) { return retcode; }
+
+            retcode = hal_pin_bit_newf(HAL_OUT, &canmanager->digital_in[i][pin], comp_id,
+                "%s.%d.digital-in-%d", prefix, i, pin);
+            if (retcode != 0) { return retcode; }
+        }   
 
         // params
         retcode = hal_param_u32_newf (HAL_RO, &canmanager->slave_id[i], comp_id,
@@ -583,6 +601,26 @@ void    set_enable_state (int idx) {
         *(canmanager->faulted[idx]) = 0;
 }
 
+
+void    update_gpio (int idx) {
+
+    int     pin;
+
+    for (pin = 0; pin < 16; pin++) {
+
+        // split the digital in into pins
+        if (DigitalIn[idx] & (1 << pin))
+            *(canmanager->digital_in[idx][pin]) = 1;
+        else
+            *(canmanager->digital_in[idx][pin]) = 0;
+
+        if (*(canmanager->digital_out[idx][pin]))
+            SET_BIT(DigitalOut[idx], pin);
+        else
+            CLEAR_BIT(DigitalOut[idx], pin);
+    }
+}
+
 static int  boot_failure_printed = 0;
 
 FUNCTION(update) 
@@ -660,6 +698,9 @@ FUNCTION(update)
     }
 
     for (i = 0; i < canmanager->slavecount ; i++) {
+
+        // update the GPIOs
+        update_gpio (i);
 
         // position / speed handling
         // only do this when the current state is Enabled
