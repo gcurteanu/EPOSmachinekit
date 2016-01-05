@@ -9,7 +9,7 @@ CANopen EPOS controller for Machinekit
   Component should be able to control multiple drives, and do so with a simple configuration. Due to the fact there can be only one NMT master, and only one Configuration Manager, the 2 are combined into a CAN manager and only ONE instance can be present. This should be handled via the LinuxCNC/MK component.  
   (note: There is a possibility to have multiple CAN buses, and each can have it's own. Will probably require minor component changes to support multi-instance)
 
-  Currently implements: CiA 301 (CanFestival mostly), CiA 302 (own code) as Configuration Manager / Master boot, CiA 402 (limited due to early stage of development, but the major state machines done)
+  Currently implements: CiA 301 (CanFestival mostly), CiA 302 (own code) as Configuration Manager / Master boot, CiA 402 (major features)
 
   Not Implemented: CiA 302 software download, SDO manager, NMT requests. Not planned, not useful for the proposed scope
 
@@ -19,15 +19,20 @@ CANopen EPOS controller for Machinekit
 - support for the DS-302 boot process and automatic configuration updates for the CANopen devices via concise DCF (0x1F22). The CanFestival existing DCF seems to be lacking a lot of required features
     * current status: _*CiA 302 done, works, needs various updates*_
 - support for the DS-402 state machine allowing the drive operation
-    * current status: _*CiA 402 state machines present, needs further features*_
+    * current status: _*CiA 402 state machines present, further features planned*_
 - support for profile position / speed as well as direct position / velocity modes as a minimum. Probably the profile modes will not be useful directly and we'll end up using the built in profile generator in Machinekit/LinuxCNC
-    * current status: _*PPM completed along with the Command/Acknowledge state machine for multiple profile moves (not used in LinuxCNC/MK)*_ .  
-      This was tested on real hardware running under LinuxCNC/Machinekit as axis A and provides a VERY good and stable response with a 1kHz servo loop.
+    * current status: _*PPM completed along with the Command/Acknowledge state machine for multiple profile moves (not used in LinuxCNC/MK)*_. Direct positioning completed and tested. Speed modes similar.  
+      This was tested on real hardware running under LinuxCNC/Machinekit as axis A and provides a VERY good and stable response with a 1kHz servo loop in both PPM and direct positioning.
 
 ##Current status:
 
+* 4 Jan 2015:
+  - Component almost complete and tested. Implemented fault detection and recovery. Initial implementation at this point that will require further work, but it is fully functional/usable.
+  - Added EMCY support / message printing.
+  - Next target is code cleanup, and put in place a structure able to make the component more configurable / able to support other CiA stadards (CiA 401? CiA 406?). Also pay attention to PDO mapping structures and linking the master with the slaves.
+
 * Jan 2015:
-  - LinuxCNC/Machinekit component created, and tested. Works better than expected. Additional code, cleanup in progress. Support for multi-axis operation ongoing
+  - LinuxCNC/Machinekit component created and tested. Works better than expected. Additional code, cleanup in progress. Support for multi-axis operation ongoing
   - new state machines for 302 in place and code cleaned up somewhat, along with 402 simplified machine (most transitions in 402 are implicit)
   - next target is to integrate the ConciseDCF into a larger configuration method, yet to be determined. ConciseDCF is VERY good for hardware operation/upload, but writing it is problematic/error prone
   - update the CiA 302 to the latest version I could find
