@@ -82,6 +82,10 @@ This is ONLY needed in case of using SYNC telegrams, since those are generated o
 SYNC is NOT USED at this moment (planned, but on a 1ms cycle it will stop a random amount of time. Not sure why yet, planned feature in order to support SYNC based PDOs)  
 One other option and possibly far better (since being a master requires sending NMT resets/stops/start to other nodes EXCEPT the local node) is to simply process the PDO sending in the SYNC callback (that would be both faster and more correct) and forego the loopback problem for a master.
 
+- found a couple of bugs in the Xenomai timer code used in CanFestival
+  - If the rt_cond_wait will return EAGAIN the timerloop in Xenomai will stop because the EAGAIN is not tested in the while condition. The code should include the EAGAIN test. This resolves most of the situations where the timer stops unexpectedly
+  - The second issues is that sometimes the timer code will request a zero sleep time (due to time difference between computing the target and actual execution). This results in a a blocked timer loop (0 = indefinite wait). This is resolved by testing for a zero timer wait and translate it into a one cycle/ns wait.
+
 ## DCF file format
 
 The format for initializing slaves is the DCF format, but not sure if a full implementation is required.
