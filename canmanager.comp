@@ -127,6 +127,8 @@ typedef struct {
 
 static canmanager_t *canmanager;
 
+int _pdo_send = 0;
+
 //Global variables
 CO_Data EPOScontrol_Data;
 
@@ -192,6 +194,26 @@ void CanManager_post_SlaveStateChange(CO_Data* d, UNS8 nodeid,  e_nodeState newN
     if (ds302_status(&EPOScontrol_Data) != BootRunning)
         rtapi_print_msg (RTAPI_MSG_ERR, "CAN ID %02x state : %s", nodeid, ds301_nmt_to_text(newNodeState));
 }
+
+/* does a very basic sychronisation
+*/
+#define TIMER_USEC 500
+#define TIMER_ONESEC (int)(1000000/TIMER_USEC)
+static int  pdo_cycler = 0;
+void PDO_cycle(CO_Data* d, UNS32 id)
+{
+    pdo_cycler++;
+    if (_pdo_send != 0) {
+        _pdo_send = 0;
+        sendPDOevent(&EPOScontrol_Data);
+        if ((pdo_cycler % TIMER_ONESEC) == 0) rtapi_print ("Sending PDOs\n");
+    } else
+        if ((pdo_cycler % TIMER_ONESEC) == 0) rtapi_print ("NOT sending PDOs\n");
+
+    // reset the alarm
+    // SetAlarm (&EPOScontrol_Data, 0x12344321, PDO_cycle, US_TO_TIMEVAL(TIMER_USEC), 0);
+}
+
 
 /***************************  INIT  *****************************************/
 void InitNodes(CO_Data* d, UNS32 id)
@@ -373,6 +395,8 @@ EXTRA_SETUP()
     // Start timer thread
     StartTimerLoop(&InitNodes);
 
+    SetAlarm (&EPOScontrol_Data, 0x12344321, PDO_cycle, US_TO_TIMEVAL(TIMER_USEC), US_TO_TIMEVAL(TIMER_USEC));
+
     // Init DS302 process
     ds302_init (&EPOScontrol_Data);
 
@@ -442,7 +466,7 @@ EXTRA_CLEANUP()
 /*
     Edge detector for enable signals
 */
-void    edge_detect () {
+inline void edge_detect () {
 
     int     i;
     for (i = 0; i < canmanager->slavecount ; i++) {
@@ -461,7 +485,7 @@ void    edge_detect () {
 /*
     This does the state transitions for the drive
 */
-void    update_states (int idx) {
+inline void update_states (int idx) {
 
     enstate_t   nodestate = Disabled;
     // gather the current state
@@ -488,7 +512,7 @@ void    update_states (int idx) {
     }
 }
 
-void    set_enable_state (int idx) {
+inline set_enable_state (int idx) {
 
     // this checks the current state and the enable signal to take the proper actions
     // at this point we have all the possible states in the current state
@@ -602,7 +626,7 @@ void    set_enable_state (int idx) {
 }
 
 
-void    update_gpio (int idx) {
+inline void update_gpio (int idx) {
 
     int     pin;
 
@@ -627,6 +651,8 @@ FUNCTION(update)
 {
     int     i;
     //rtapi_print ("update called\n");
+
+    uint64_t    clockStart = rtuClock();
 
     edge_detect();
 
@@ -697,6 +723,8 @@ FUNCTION(update)
         set_enable_state (i);
     }
 
+    uint64_t    clockOper = rtuClock();
+
     for (i = 0; i < canmanager->slavecount ; i++) {
 
         // update the GPIOs
@@ -705,6 +733,15 @@ FUNCTION(update)
         // position / speed handling
         // only do this when the current state is Enabled
         // do not send updates to disabled drives
+        // however, GET updates from disabled drives to keep consistency
+
+        // load the feedback value for position
+        *(canmanager->position_counts[i]) = PositionActualValue[i];
+        // calculate position in units
+        *(canmanager->position_feedback[i]) = *(canmanager->position_counts[i]) / canmanager->position_scale[i];
+        // load the feedback value for velocity
+         *(canmanager->velocity_feedback[i]) = VelocityActualValue[i];
+
         if (canmanager->currentstate[i] == Enabled) {
 
             switch (*(canmanager->command_mode[i])) {
@@ -753,15 +790,27 @@ FUNCTION(update)
                     canmanager->currentstate[i] = IntFaulted;
                     canmanager->laststatechange[i] = rtuClock();
             }
-            // load the feedback value
-            *(canmanager->position_counts[i]) = PositionActualValue[i];
-            // calculate position in units
-            *(canmanager->position_feedback[i]) = *(canmanager->position_counts[i]) / canmanager->position_scale[i];
         }
     }
 
+    uint64_t    clockPDOstart = rtuClock();
     // generate the PDOs. This is the ONLY lock needed
-    EnterMutex();
-    sendPDOevent(&EPOScontrol_Data);
-    LeaveMutex();
+    //EnterMutex();
+    //sendPDOevent(&EPOScontrol_Data);
+    //LeaveMutex();
+
+    // use the timer generated PDOs
+    _pdo_send = 1;
+
+    uint64_t    clockEnd = rtuClock();
+
+    int         npdo = (int)(clockPDOstart - clockStart);
+    int         pdo = (int)(clockEnd - clockPDOstart);
+    int         total = (int)(clockEnd - clockStart);
+    int         oper = (int)(clockPDOstart - clockOper);
+
+#define MAX_US  100
+
+    if (npdo > MAX_US || pdo > MAX_US || total > MAX_US || oper > MAX_US)
+        rtapi_print ("Time exceeeded, %d total, %d non-PDO (%d operation), %d PDO\n", total, npdo, oper, pdo);
 }

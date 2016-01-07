@@ -331,7 +331,9 @@ void    printStatusword () {
     eprintf ("Status mach END\n\n");
 }
 
-#define TIMER_USEC  100000
+#define TIMER_USEC  100
+#define COUNTS_SEC (int)(1000000/TIMER_USEC)
+static int timer_cycle=0;
 
 void timer_play(CO_Data* d, UNS32 id)
 {
@@ -339,8 +341,14 @@ void timer_play(CO_Data* d, UNS32 id)
     uint64_t    cdiff = crtclock - almClock;
     int diff = cdiff - TIMER_USEC;
 
+    timer_cycle++;
+
     if (diff > 100 || diff < -100) eprintf ("1 : elapsed %6lld %4d\n", cdiff, diff);
     almClock = crtclock;
+    //sendPDOevent(&EPOScontrol_Data);
+
+    //heartbeat
+    if ((timer_cycle % COUNTS_SEC) == 0) eprintf ("cycle %d\n", timer_cycle);
 }
 
 #define TIMER2_USEC  50000
@@ -418,7 +426,7 @@ int main(int argc,char **argv)
 
 
     //EnterMutex();
-    //SetAlarm (&EPOScontrol_Data, 0x12334, timer_play, US_TO_TIMEVAL(TIMER_USEC), US_TO_TIMEVAL(TIMER_USEC));
+    SetAlarm (&EPOScontrol_Data, 0x12334, timer_play, US_TO_TIMEVAL(TIMER_USEC), US_TO_TIMEVAL(TIMER_USEC));
     //SetAlarm (&EPOScontrol_Data, 0x56789, timer_play2, US_TO_TIMEVAL(TIMER2_USEC), US_TO_TIMEVAL(TIMER2_USEC));    
     //LeaveMutex();
 
@@ -457,13 +465,41 @@ int main(int argc,char **argv)
     VelocityDemandValue[0] = 1000;
 
     epos_enable_drive (0);
-    epos_set_mode (0, EPOS_MODE_PPM);
+    epos_set_mode (0, EPOS_MODE_PVM);
     // load values to the drive
     sendPDOevent(&EPOScontrol_Data);
 
 	LeaveMutex();
 
     eprintf ("PPM parameters done, ensuring drive is enabled\n");
+
+    //sleep_ms(10*1000);
+    sleep (120);
+    eprintf ("Last timer seeen=%d, %d seconds\n", timer_cycle, (int)(timer_cycle / COUNTS_SEC));
+    exit (1);
+
+    eprintf ("Starting PDO test\n");
+
+    // PDO sending performance
+
+    uint64_t    startClock = rtuClock();
+    int         pdocycle;
+
+#ifdef __TESTING
+#define PDO_CYCLES 1
+    for (pdocycle = 0; pdocycle < 10000; pdocycle++) {
+
+        EnterMutex();
+        sendPDOevent(&EPOScontrol_Data);
+        LeaveMutex();
+    }
+
+    uint64_t    endClock = rtuClock();
+
+    eprintf ("PDO testing complete, elapsed %lld usec %f/call\n", endClock - startClock, (float)(endClock - startClock)/PDO_CYCLES);
+#endif
+
+    exit(1);
 
 #define CYCLES		200
 #define STEP_SIZE	10000
